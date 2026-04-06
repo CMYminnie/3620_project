@@ -144,14 +144,14 @@ md"### Fuselage"
 
 # ╔═╡ b849f0aa-6391-4945-8ef3-70907a9ff1ec
 fuse = HyperEllipseFuselage(
-	radius = 1.925, 			# Radius, m
+	radius = 1.75, 			# Radius, m (diameter 3.5)
 	length = 28, 			# Length, m
-	x_a    = 0.15, 		# Start of cabin, ratio of length
-	x_b    = 0.75,  			# End of cabin, ratio of length
-	c_nose = 1.5,  			# Curvature of nose
+	x_a    = 0.145, 		# Start of cabin, ratio of length
+	x_b    = 0.71,  			# End of cabin, ratio of length
+	c_nose = 1.3,  			# Curvature of nose
 	c_rear = 1.2,  			# Curvature of rear
-	d_nose = -0.5, 			# "Droop" or "rise" of nose, m
-	d_rear = 0.8,  			# "Droop" or "rise" of rear, m
+	d_nose = -0.75, 			# "Droop" or "rise" of nose, m
+	d_rear = 0.5,  			# "Droop" or "rise" of rear, m
 	position = [0.,0.,0.] 	# Set nose at origin, m
 );
 
