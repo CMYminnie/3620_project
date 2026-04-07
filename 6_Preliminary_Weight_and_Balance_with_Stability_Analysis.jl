@@ -55,8 +55,8 @@ First, you can define the wing from your preliminary wing sizing. Here, we'll ch
 
 # ╔═╡ d9ef5002-70d7-40a8-81fa-7a07567eb613
 begin
-foil_w_root = read_foil("C:\\Users\\CMY\\OneDrive\\Desktop\\NACA 64-312.txt") # Read the root airfoil
-foil_w_tip = read_foil(download("https://m-selig.ae.illinois.edu/ads/coord/naca64209.dat"))#Download the tip airfoil
+foil_w_root = read_foil("C:\\Users\\CMY\\OneDrive\\Desktop\\Airfoil\\NACA64_312.txt") # Read the root airfoil
+foil_w_tip  = read_foil("C:\\Users\\CMY\\OneDrive\\Desktop\\Airfoil\\NACA64_209.txt")#Read the tip airfoil
 end
 # ╔═╡ a76599c7-563d-4647-8fda-36869d07ff71
 plot(foil_w_root, aspect_ratio = 1)
