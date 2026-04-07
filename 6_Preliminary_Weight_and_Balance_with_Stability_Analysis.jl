@@ -22,8 +22,9 @@ begin
 	using PlutoUI
 	using DataFrames
 	using Plots
+	using StaticArrays
 	gr(size = (800,600))
-	TableOfContents(depth = 4)
+	TableOfContents()
 end
 
 # ╔═╡ 07559c60-063b-11f0-1a5c-37ed11f4209e
@@ -55,14 +56,12 @@ First, you can define the wing from your preliminary wing sizing. Here, we'll ch
 
 # ╔═╡ d9ef5002-70d7-40a8-81fa-7a07567eb613
 begin
-foil_w_root = read_foil("C:\\Users\\CMY\\OneDrive\\Desktop\\Airfoil\\NACA64_312.txt") # Read the root airfoil
-foil_w_tip  = read_foil("C:\\Users\\CMY\\OneDrive\\Desktop\\Airfoil\\NACA64_209.txt")#Read the tip airfoil
+foil_w_root = read_foil("Airfoil\\NACA64_312.txt") # Read the root airfoil
+foil_w_tip  = read_foil("Airfoil\\NACA64_209.txt")#Read the tip airfoil
 end
+
 # ╔═╡ a76599c7-563d-4647-8fda-36869d07ff71
 plot(foil_w_root, aspect_ratio = 1)
-
-# ╔═╡ 415a9fb5-9f65-4af1-a6bb-f8204788ff5d
-plot(foil_w_tip, aspect_ratio = 1)
 
 # ╔═╡ 87f54aa2-861a-44f7-b331-1198f522d1e4
 md"""Here, we'll define a two-section wing planform that we'll use in this notebook."""
@@ -149,15 +148,15 @@ md"### Fuselage"
 
 # ╔═╡ b849f0aa-6391-4945-8ef3-70907a9ff1ec
 fuse = HyperEllipseFuselage(
-	radius = 1.75, 			# Radius, m (diameter 3.5)
-	length = 28, 			# Length, m
+	radius = 1.7, 			# Radius, m (diameter 3.4)
+	length = 32, 			# Length, m
 	x_a    = 0.145, 		# Start of cabin, ratio of length
-	x_b    = 0.71,  			# End of cabin, ratio of length
+	x_b    = 0.81,  			# End of cabin, ratio of length
 	c_nose = 1.3,  			# Curvature of nose
 	c_rear = 1.2,  			# Curvature of rear
 	d_nose = -0.75, 			# "Droop" or "rise" of nose, m
-	d_rear = 0.5,  			# "Droop" or "rise" of rear, m
-	position = [0.,0.,0.] 	# Set nose at origin, m
+	d_rear = -0.09,  			# "Droop" or "rise" of rear, m
+	position = [-0.123,0.,0.] 	# Set nose at origin, m
 );
 
 # ╔═╡ 4b754590-3137-4400-a1a9-bd99135aee4d
@@ -208,22 +207,33 @@ md"## Stabilizer Design"
 # ╔═╡ 28739577-e9fd-48f2-8f55-a036b560931d
 md"### Horizontal Tail"
 
+# ╔═╡ 115e9a7e-c194-4ac3-bc10-19d6d8973537
+con_foil = control_surface(naca4(0,0,0,9), hinge = 0.91, angle = 0)
+
 # ╔═╡ 704943ec-10e2-4c50-994b-4688a99ac6c7
 htail = WingSection(
-    area        = 101,  # HOW DO YOU DETERMINE THIS?
-    aspect      = 4.2,  
-    taper       = 0.4,  
-    dihedral    = 7.,   
-    sweep       = 35.,  
+    area        = 13.7,  # HOW DO YOU DETERMINE THIS?--> Area~12.5-25% S_wing
+    aspect      = 7.1,  
+    taper       = 0.25,  
+    dihedral    = 0.,   
+    sweep       = 30.,  
     w_sweep     = 0.,   # Leading-edge sweep
-    root_foil   = naca4(0,0,1,2),
+    root_foil   = con_foil, 		# Root airfoil
+	tip_foil    = con_foil, 		# Tip airfoil
     symmetry    = true,
     
     ## Orientation
     angle       = -3,           # Incidence angle (deg), HOW DO YOU DETERMINE THIS?
     axis        = [0., 1., 0.], # Axis of rotation, y-axis
-    position    = [ fuse_end_x - 8., 0., 0.], # HOW DO YOU DETERMINE THIS?
+    position    = [ fuse_end_x - 6., 0., 0.], # HOW DO YOU DETERMINE THIS?
 );
+
+# ╔═╡ 50969d37-e674-4fa7-b28f-04833835e6a3
+begin
+println("Wing MAC x: ", mean_aerodynamic_center(wing, 0.25).x)
+println("HTail MAC x: ", mean_aerodynamic_center(htail, 0.25).x)
+end
+
 
 # ╔═╡ 9072dc86-1f9f-48c5-8b11-31bf722223f2
 begin
@@ -255,21 +265,24 @@ md"### Vertical Tail"
 
 # ╔═╡ add41f70-5744-494f-8324-726fa5d9bb27
 vtail = WingSection(
-    area        = 56.1, # HOW DO YOU DETERMINE THIS?
-    aspect      = 1.5,
-    taper       = 0.4,
-    sweep       = 44.4,
+    area        = 6.183, # HOW DO YOU DETERMINE THIS?
+    aspect      = 3.12,
+    taper       = 0.25,
+    sweep       = 30,
     w_sweep     = 0.,   # Leading-edge sweep
-    root_foil   = naca4(0,0,0,9),
+    root_foil   = naca4(0,0,1,2),
     
     ## Orientation
     angle       = 90.,       # To make it vertical
     axis        = [1, 0, 0], # Axis of rotation, x-axis
-    position    = htail.affine.translation - [2.,0.,-1.] # HOW DO YOU DETERMINE THIS?
+    position    = htail.affine.translation + [0.082,0.,-0.01] # HOW DO YOU DETERMINE THIS?
 ); # Not a symmetric surface
 
 # ╔═╡ 0c13b5ef-8a2e-4cb9-a246-69f66db9b92f
 chords(vtail)
+
+# ╔═╡ 32d4cbb9-0206-4708-85fa-f8001fda9e9b
+md"### Visualization"
 
 # ╔═╡ 888b4f11-37ba-43df-984b-a887563142ff
 begin
@@ -914,6 +927,9 @@ x_{25\%~\text{MAC}} & = x_{\text{LE},\ \text{MAC}} + \bar{c} / 4, & \quad \text{
 # ╔═╡ 402ead4c-b3e9-4153-baee-1048468e6080
 # The End.
 
+# ╔═╡ 415a9fb5-9f65-4af1-a6bb-f8204788ff5d
+plot(foil_w_tip, aspect_ratio = 1)
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
@@ -921,21 +937,23 @@ AeroFuse = "477c59f4-51f5-487f-bf1e-8db39645b227"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 AeroFuse = "~0.4.12"
 DataFrames = "~1.7.0"
 Plots = "~1.40.9"
 PlutoUI = "~0.7.23"
+StaticArrays = "~1.9.18"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.5"
+julia_version = "1.12.1"
 manifest_format = "2.0"
-project_hash = "a9031e841caef307038f0df8b29d1a5d0b6825fe"
+project_hash = "9d4785d32cb2ff78c9b7d234ecd098410fc4208c"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -1254,7 +1272,7 @@ version = "0.9.3"
 [[deps.Downloads]]
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
-version = "1.7.0"
+version = "1.6.0"
 
 [[deps.EpollShim_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1567,7 +1585,7 @@ version = "0.6.4"
 [[deps.LibCURL_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "OpenSSL_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
-version = "8.15.0+0"
+version = "8.11.1+1"
 
 [[deps.LibGit2]]
 deps = ["LibGit2_jll", "NetworkOptions", "Printf", "SHA"]
@@ -1706,7 +1724,7 @@ version = "1.11.0"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2025.11.4"
+version = "2025.5.20"
 
 [[deps.NaNMath]]
 deps = ["OpenLibm_jll"]
@@ -1752,7 +1770,7 @@ version = "1.4.3"
 [[deps.OpenSSL_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
-version = "3.5.4+0"
+version = "3.5.1+0"
 
 [[deps.OpenSpecFun_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl"]
@@ -1802,7 +1820,7 @@ version = "0.43.4+0"
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "Random", "SHA", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.12.1"
+version = "1.12.0"
 weakdeps = ["REPL"]
 
     [deps.Pkg.extensions]
@@ -2130,9 +2148,9 @@ weakdeps = ["OffsetArrays", "StaticArrays"]
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "PrecompileTools", "Random", "StaticArraysCore"]
-git-tree-sha1 = "e3be13f448a43610f978d29b7adf78c76022467a"
+git-tree-sha1 = "246a8bb2e6667f832eea063c3a56aef96429a3db"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.9.12"
+version = "1.9.18"
 weakdeps = ["ChainRulesCore", "Statistics"]
 
     [deps.StaticArrays.extensions]
@@ -2585,9 +2603,9 @@ uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
 version = "1.64.0+1"
 
 [[deps.p7zip_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
+deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
-version = "17.7.0+0"
+version = "17.5.0+2"
 
 [[deps.x264_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -2639,11 +2657,13 @@ version = "1.4.1+2"
 # ╠═ef4431d6-5113-4e77-b549-62b0f6444a39
 # ╠═532e2bf5-2ab9-4efb-84a3-3ab16b6ea81b
 # ╠═2b098bef-934b-40fa-8da5-f08d032aa0e4
+# ╠═50969d37-e674-4fa7-b28f-04833835e6a3
 # ╠═7f9790ab-a1af-4de3-8375-44d11d784bf7
 # ╟─04f96ffb-aa30-4bf5-918f-ba1d8528768f
 # ╟─c559cb5f-a016-43a0-8596-89f006245b4f
 # ╟─8026eb26-010f-487b-bd6d-e82939d09d54
 # ╟─28739577-e9fd-48f2-8f55-a036b560931d
+# ╠═115e9a7e-c194-4ac3-bc10-19d6d8973537
 # ╠═704943ec-10e2-4c50-994b-4688a99ac6c7
 # ╠═9072dc86-1f9f-48c5-8b11-31bf722223f2
 # ╟─04750bc6-5e32-4182-8c58-805d902bc6b4
@@ -2652,6 +2672,7 @@ version = "1.4.1+2"
 # ╟─25fba8e3-b444-424d-b839-836ab64d76ac
 # ╠═add41f70-5744-494f-8324-726fa5d9bb27
 # ╠═0c13b5ef-8a2e-4cb9-a246-69f66db9b92f
+# ╠═32d4cbb9-0206-4708-85fa-f8001fda9e9b
 # ╠═888b4f11-37ba-43df-984b-a887563142ff
 # ╟─1be5a6b2-994a-44b0-8b13-5bbb1fffecd9
 # ╠═69f762a3-9a0c-4480-a300-30c3a3914d36
@@ -2760,5 +2781,6 @@ version = "1.4.1+2"
 # ╟─b710c3fa-a48d-4c0a-841e-bc3332cd5bf7
 # ╟─cbdf5265-1c2b-4bbc-a458-18fba0c9d376
 # ╠═402ead4c-b3e9-4153-baee-1048468e6080
+# ╠═415a9fb5-9f65-4af1-a6bb-f8204788ff5d
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
