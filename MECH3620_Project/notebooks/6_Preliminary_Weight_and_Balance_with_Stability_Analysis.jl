@@ -76,6 +76,8 @@ wing = Wing(
     w_sweep     = 0.0,                      # Leading-edge sweep
     position    = [9.1, 0.0, -1.0],      	 # HOW DO YOU DETERMINE THIS?
     symmetry    = true                      # Symmetry
+    angle       = 5
+    axis        = [0, 1, 0]
 )
 
 # ╔═╡ 678f44cb-e7fa-403d-bb45-7ece4195b88b
