@@ -860,10 +860,10 @@ md"## Visualization"
 print_derivatives(dvs.aircraft; farfield = true) # Example of printing
 
 # ╔═╡ 143d4eb1-3e19-4ca8-8bea-e0d35bf69761
-plot_vlm = @bind plot_vlm CheckBox(default = false)
+plot_vlm = false
 
 # ╔═╡ 17c59c56-d2aa-44d9-8658-bd323b7d50b7
-plot_streamlines = @bind plot_streamlines CheckBox(default = false)
+plot_streamlines = false
 
 # ╔═╡ a9cc0876-a907-4b39-bf8b-5c1c8f92258a
 camera_angles3 = md"""
