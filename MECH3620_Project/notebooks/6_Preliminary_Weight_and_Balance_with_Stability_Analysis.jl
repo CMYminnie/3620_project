@@ -75,8 +75,8 @@ wing = Wing(
     sweeps      = [30.0, 30.0],             # Sweep angles (deg )
     w_sweep     = 0.0,                      # Leading-edge sweep
     position    = [9.1, 0.0, -1.0],      	 # HOW DO YOU DETERMINE THIS?
-    symmetry    = true                      # Symmetry
-    angle       = 5
+    symmetry    = true,                      # Symmetry
+    angle       = 5,
     axis        = [0, 1, 0]
 )
 
@@ -372,8 +372,8 @@ md"""
 # ╔═╡ c159f556-4443-4077-acf2-2c11422cf86a
 begin
 	# Reference quantities
-	TOGW = 34035.5 # Takeoff gross weight, kg (changed)
-	W_engine = 8762 # GE90-110B1 engine weight (single), kg
+	TOGW = 33614.1 # Takeoff gross weight, kg (changed)
+	W_engine = 1179 # GE CF34-8E engine weight (single), kg
 end;
 
 # ╔═╡ e7bcb068-b1b4-45c3-a549-75d6af6dc871
@@ -400,6 +400,22 @@ end;
 # ╔═╡ 0567a709-6420-44f6-908f-28c283bbaecf
 md"""The weight and CG position of each component can hence be computed and included in a dictionary for convenience in calculations."""
 
+# ---- payload / loading assumptions ----
+n_crew = 2
+n_pax  = 70              # or whatever your team finalized
+
+W_crew = n_crew * 90.0   # kg, adjust if your team uses another crew mass
+W_pax  = n_pax  * 90.0   # kg
+W_bag  = n_pax  * 15.0   # kg
+W_fuel = 5000.0          # <-- replace with your actual fuel weight from sizing
+
+# ---- representative x-locations ----
+# replace these with values from your cabin / tank layout
+x_crew = x_nose + 0.12 * fuse.length
+x_pax  = x_nose + 0.45 * fuse.length
+x_bag  = x_nose + 0.75 * fuse.length
+x_fuel = mac40_w.x       # acceptable first-pass if wing tank fuel
+
 # ╔═╡ 9e9f2802-c8ee-4df4-b643-ee3a271e2986
 weight_position = Dict(	
 	"engine" 	=> (1.3 * 2 * W_engine, 			eng_L.x), 	# Engines (2 × weight)
@@ -411,6 +427,10 @@ weight_position = Dict(
 	"all-else" 	=> (0.17 	* 		 TOGW, 			x_other),
 	"noseLG" 	=> (0.043 	* 0.15 * TOGW, 			x_nLG), 
 	"mainLG" 	=> (0.043 	* 0.85 * TOGW, 			x_mLG),
+    "crew"      => (W_crew, x_crew),
+    "passenger" => (W_pax,  x_pax),
+    "baggage"   => (W_bag,  x_bag),
+    "fuel"      => (W_fuel, x_fuel),
 );
 
 # ╔═╡ 1cb4658c-16ac-412b-8dfb-49778f7fe78a
