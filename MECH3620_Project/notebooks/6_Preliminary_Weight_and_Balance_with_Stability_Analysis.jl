@@ -214,7 +214,7 @@ con_foil = control_surface(naca4(0,0,0,9), hinge = 0.91, angle = 0)
 
 # ╔═╡ 704943ec-10e2-4c50-994b-4688a99ac6c7
 htail = WingSection(
-    area        = 13.7,  # HOW DO YOU DETERMINE THIS?--> Area~12.5-25% S_wing
+    area        = 16.5,  # HOW DO YOU DETERMINE THIS?--> Area~12.5-25% S_wing
     aspect      = 7.1,  
     taper       = 0.25,  
     dihedral    = 0.,   
@@ -227,7 +227,7 @@ htail = WingSection(
     ## Orientation
     angle       = -3,           # Incidence angle (deg), HOW DO YOU DETERMINE THIS?
     axis        = [0., 1., 0.], # Axis of rotation, y-axis
-    position    = [ fuse_end_x - 6., 0., 0.], # HOW DO YOU DETERMINE THIS?
+    position    = [ fuse_end_x - 4.5, 0., 0.], # HOW DO YOU DETERMINE THIS?
 );
 
 # ╔═╡ 50969d37-e674-4fa7-b28f-04833835e6a3
@@ -407,13 +407,13 @@ n_pax  = 70              # or whatever your team finalized
 W_crew = n_crew * 90.0   # kg, adjust if your team uses another crew mass
 W_pax  = n_pax  * 90.0   # kg
 W_bag  = n_pax  * 15.0   # kg
-W_fuel = 5000.0          # <-- replace with your actual fuel weight from sizing
+W_fuel = 9647.2467          # <-- replace with your actual fuel weight from sizing
 
 # ---- representative x-locations ----
 # replace these with values from your cabin / tank layout
 x_crew = x_nose + 0.12 * fuse.length
 x_pax  = x_nose + 0.45 * fuse.length
-x_bag  = x_nose + 0.75 * fuse.length
+x_bag  = x_nose + 0.50 * fuse.length
 x_fuel = mac40_w.x       # acceptable first-pass if wing tank fuel
 
 # ╔═╡ 9e9f2802-c8ee-4df4-b643-ee3a271e2986
@@ -424,13 +424,24 @@ weight_position = Dict(
 	"htail"  	=> (S_h * 5.5 * lb_ft2_to_kg_m2, 	mac40_h.x), # HTail, 40% MAC
 	"vtail"  	=> (S_v * 5.5 * lb_ft2_to_kg_m2, 	mac40_v.x), # VTail, 40% MAC
 	"fuse"   	=> (S_f * 5.0 * lb_ft2_to_kg_m2, 	x_fuse), 	# Fuse, centroid
-	"all-else" 	=> (0.17 	* 		 TOGW, 			x_other),
+	"all-else" => (
+    TOGW - (
+        (1.3 * 2 * W_engine) +
+        (S_w * 12.2 * lb_ft2_to_kg_m2) +
+        (S_h * 5.5 * lb_ft2_to_kg_m2) +
+        (S_v * 5.5 * lb_ft2_to_kg_m2) +
+        (S_f * 5.0 * lb_ft2_to_kg_m2) +
+        (0.043 * 0.15 * TOGW) +
+        (0.043 * 0.85 * TOGW) +
+        W_crew + W_pax + W_bag + W_fuel
+    ),
+    x_other),
 	"noseLG" 	=> (0.043 	* 0.15 * TOGW, 			x_nLG), 
 	"mainLG" 	=> (0.043 	* 0.85 * TOGW, 			x_mLG),
     "crew"      => (W_crew, x_crew),
     "passenger" => (W_pax,  x_pax),
     "baggage"   => (W_bag,  x_bag),
-    "fuel"      => (W_fuel, x_fuel),
+    "fuel"      => (W_fuel, x_fuel), 
 );
 
 # ╔═╡ 1cb4658c-16ac-412b-8dfb-49778f7fe78a
@@ -463,6 +474,10 @@ md"The same applies to the total weight, i.e., $\sum_i W_i$"
 
 # ╔═╡ d4213288-b448-4783-a3bc-78c2fb25b4a6
 W_sum = sum(weight for (weight, pos_x) in values(weight_position)) # Sum weights
+println("TOGW target = ", TOGW)
+println("Built-up weight W_sum = ", W_sum)
+println("Difference = ", W_sum - TOGW)
+println("Percent difference = ", (W_sum - TOGW)/TOGW * 100, " %")
 
 # ╔═╡ cba370b6-b8c8-44d8-970b-a178602d596f
 x_cg = M_sum / W_sum 	# Compute center of gravity, m
@@ -493,7 +508,8 @@ md"""3 parameters are unknown after the sizing and placement of the empennage:
 md"Let's determine the distance between the CG and the aerodynamic center of the wing using the values from the previous section."
 
 # ╔═╡ e0fe156d-7748-4585-bb80-c0c487af76cf
-x_cg - mac40_w.x
+dist_cg_mac = x_cg - mac40_w.x
+println("Distance Between CG and Aerodynamic Center of the Wing: ", dist_cg_mac)
 
 # ╔═╡ d53fa5b1-eadb-4bc5-a00e-55308f55fac0
 md"""
@@ -523,7 +539,7 @@ end
 # Example
 begin
 	eta = 0.97 # Aerodynamic efficiency factor (for DATCOM formula)
-	M = 0.84 # operating cruise Mach number
+	M = 0.78 # operating cruise Mach number
 	CL_α_w = lift_slope_DATCOM(AR_w, eta, lambda_w, M)
 end
 
@@ -925,6 +941,19 @@ begin
 		scatter!(Tuple(r_np_vlm), label = "Neutral Point (VLM)")
 	end
 end
+
+println("Static margin = ", SM)
+println("Static margin (%) = ", SM * 100)
+println("Static margin from VLM (%) = ", SM_VLM * 100)
+println("V_h = ", V_h)
+println("CLah/CLaw = ", CL_α_h / CL_α_w)
+println("tail contribution = ", V_h * CL_α_h / CL_α_w)
+println("Cm_f_CL = ", Cm_f_CL)
+println("x_np_by_c = ", x_np_by_c)
+println("x_cg = ", x_cg)
+println("x_fuel = ", x_fuel)
+println("x_pax = ", x_pax)
+println("x_bag = ", x_bag)
 
 # ╔═╡ 12d48e84-bd6f-4efc-a265-e64234183650
 # savefig(plt_vlm, "static_stability_vlm.png")
