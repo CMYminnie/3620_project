@@ -1,0 +1,72 @@
+============================================================
+COMPLETE AIRCRAFT DESIGN DATA
+Generated: 2026-04-22T15:03:53.809
+============================================================
+
+1. MISSION PARAMETERS
+----------------------------------------
+Payload weight: 7350 kg
+Crew weight: 360 kg
+Range: 1250.0 km
+Cruise Mach: 0.78
+
+2. AERODYNAMIC PARAMETERS
+----------------------------------------
+CLmax_takeoff = 2
+CLmax_landing = 3
+CD0 = 0.02
+CD0_cruise = 0.019
+AR = 8
+e_cruise = 0.85
+V_stall = 62.8
+
+3. MISSION ANALYSIS RESULTS
+----------------------------------------
+Beta (landing): 0.8542
+One-way fuel burn: 14.6%
+Final beta: 0.7296
+Mission fuel fraction: 27.0%
+Total fuel fraction(with 6% trapped): 28.7%
+
+4. DESIGN POINT
+----------------------------------------
+Wing Loading: 4069.3963426539453 N/m² (414.8 kg/m²)
+Thrust-to-Weight: 0.28402641733580436
+
+5. WEIGHTS
+----------------------------------------
+MTOW: 39023.4 kg
+
+6. GEOMETRY
+----------------------------------------
+Wing Area: 94.1 m²
+Wing Span: 27.43 m
+
+7. PERFORMANCE
+----------------------------------------
+TOP required = 150.1 lbf/ft²
+Time to Climb to 35,000 ft: 15.78 minutes
+
+8. INTERSECTION POINTS
+----------------------------------------
+Stall-Takeoff: W/S=4069.4 N/m², T/W=0.284
+Landing-Takeoff: W/S=4287.8 N/m², T/W=0.299
+Takeoff-Climb6: W/S=3853.0 N/m², T/W=0.269
+Climb6-Ceiling: W/S=1591.0 N/m², T/W=0.269
+Landing-Climb6: W/S=4287.8 N/m², T/W=0.269
+
+9. EMPTY WEIGHT MODELS (can ignore the roskam one)
+----------------------------------------
+Raymer: 20128.2 kg (51.6%)
+
+10. COMPOSITE MATERIAL ANALYSIS
+----------------------------------------
+7.000000000000001% weight saving
+Final MTOW: 33614.1 kg
+Empty Weight Saving: 13.86162252%
+
+11. BISECTION METHOD RESULTS
+----------------------------------------
+Final MTOW (Bisection Method): 39023.5%
+
+============================================================
