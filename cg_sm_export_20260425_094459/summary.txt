@@ -1,0 +1,57 @@
+CG AND STATIC MARGIN SUMMARY
+============================================================
+
+Original CG = 22.05 %MAC
+DATCOM SM   = 12.95 %
+VLM SM      = 10.1 %
+DATCOM NP   = 14.9167 m
+VLM NP      = 14.8159 m
+
+MISSION CG EXCURSION
+9×8 DataFrame
+ Row │ Phase                  Beta      Fuel_remaining_fraction  Weight_kg  x_cg_m   CG_percent_MAC  SM_DATCOM_percent  SM_VLM_percent
+     │ String                 Float64   Float64                  Float64    Float64  Float64         Float64            Float64
+─────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │ Start / full fuel      1.0                   1.0            30562.8  14.6584         27.6873            7.31375         4.46041
+   2 │ After warm-up          0.99                  0.931417       29902.2  14.6489         27.4165            7.58453         4.73119
+   3 │ After taxi             0.9801                0.863521       29248.1  14.639          27.1364            7.86465         5.01131
+   4 │ After takeoff          0.975199              0.829912       28924.4  14.6339         26.993             8.008           5.15466
+   5 │ After climb            0.955696              0.696148       27635.8  14.6126         26.3892            8.6118          5.75847
+   6 │ After outbound cruise  0.890403              0.248355       23322.2  14.5241         23.8823           11.1187          8.26535
+   7 │ After loiter           0.869777              0.106896       21959.5  14.4889         22.8857           12.1153          9.26199
+   8 │ After descent          0.861079              0.0472431      21384.8  14.4727         22.4273           12.5737          9.72034
+   9 │ After landing          0.854191              1.78464e-10    20929.7  14.4592         22.0465           12.9545         10.1012
+
+BOARDING POTATO PLOT DATA
+
+
+WEIGHT AND BALANCE TABLE
+------------------------------------------------------------
+13×6 DataFrame
+ Row │ Component           Weight_kg  Weight_N  x_cg_m   Moment_kg_m    Moment_N_m
+     │ String              Float64    Float64   Float64  Float64        Float64
+─────┼────────────────────────────────────────────────────────────────────────────────
+   1 │ all-else             5714.4    56058.2   14.415   82373.0            8.08079e5
+   2 │ engine               3065.4    30071.6   11.9139  36520.8            3.58269e5
+   3 │ fuse                 5979.49   58658.8   14.415   86194.4            8.45567e5
+   4 │ htail                 483.361   4741.77  26.8459  12976.3            1.27297e5
+   5 │ mainLG               1228.6    12052.5   14.415   17710.2            1.73737e5
+   6 │ noseLG                216.811   2126.92   4.3245    937.599       9197.85
+   7 │ vtail                 166.034   1628.8   26.557    4409.37       43255.9
+   8 │ wing                 4075.63   39981.9   15.0912  61506.2            6.03376e5
+   9 │ baggage_report       1050.0    10300.5   17.974   18872.7            1.85141e5
+  10 │ fuel_full_report     9633.13   94501.0   15.0912      1.45376e5      1.42614e6
+  11 │ pax_aft_report       2250.0    22072.5   19.836   44631.0            4.3783e5
+  12 │ pax_forward_report   1800.0    17658.0    8.664   15595.2            1.52989e5
+  13 │ pax_middle_report    2250.0    22072.5   14.25    32062.5            3.14533e58×5 DataFrame
+ Row │ Sequence       Step                   Weight_kg  x_cg_m   CG_percent_MAC
+     │ String         String                 Float64    Float64  Float64
+─────┼──────────────────────────────────────────────────────────────────────────
+   1 │ Front to back  Start: fuel + baggage    31612.8  14.7686         30.8058
+   2 │ Front to back  Forward cabin            33412.8  14.4397         21.493
+   3 │ Front to back  Middle cabin             35662.8  14.4277         21.1541
+   4 │ Front to back  Aft cabin                37912.8  14.7487         30.2432
+   5 │ Back to front  Start: fuel + baggage    31612.8  14.7686         30.8058
+   6 │ Back to front  Aft cabin                33862.8  15.1053         40.3406
+   7 │ Back to front  Middle cabin             36112.8  15.052          38.8316
+   8 │ Back to front  Forward cabin            37912.8  14.7487         30.2432

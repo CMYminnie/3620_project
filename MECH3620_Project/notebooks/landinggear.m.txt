@@ -1,0 +1,36 @@
+aftcg = 14.950845;
+fwdcg = 14.572559;
+main = 16;
+nose = 4;
+Ma = main - aftcg;
+Mf = main - fwdcg;
+Na = aftcg - nose;
+Nf = fwdcg - nose;
+B = main - nose;
+x1 = Ma/B
+%if x1 > 0.05
+%    disp("x1 True")
+%end
+x2 = Mf/B
+%if x2 < 0.2
+%    disp("x2 True")
+%end
+MTOW = 33614.1;
+loadmax_main = MTOW*Na/B
+mainpercent = loadmax_main / MTOW *100
+loadmax_nose = MTOW*Mf/B;
+nosepercent = loadmax_nose / MTOW *100;
+loadmin_nose = MTOW*Ma/B
+nosepercentmin = loadmin_nose / MTOW *100
+
+H = 1.6;
+dynbreakload = 0.31*MTOW*H/B;
+
+mainnum = 4;
+nosenum = 2;
+Wwmain = loadmax_main / mainnum
+Wwnose = loadmax_nose / nosenum
+maindia = 5.3 * Wwmain ^0.315
+mainwidth = 0.39 * Wwmain ^0.48
+
+%KEbrake = 0.5*Wland / 9.81 * Vstall;
