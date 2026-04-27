@@ -219,9 +219,11 @@
     # ╔═╡ 28739577-e9fd-48f2-8f55-a036b560931d
     md"### Horizontal Tail"
 
+    con_foil = naca4(0, 0, 1, 2)
+
     # ╔═╡ 704943ec-10e2-4c50-994b-4688a99ac6c7
     htail = WingSection(
-            area        = 18,  # HOW DO YOU DETERMINE THIS?--> Area~12.5-25% S_wing
+            area        = 16.5,  # HOW DO YOU DETERMINE THIS?--> Area~12.5-25% S_wing
             aspect      = 7.1,  
             taper       = 0.25,  
             dihedral    = 0.,   
@@ -376,13 +378,27 @@
 
     # ╔═╡ c159f556-4443-4077-acf2-2c11422cf86a
     begin
-        # Reference quantities
-        TOGW = 33614.1 # Takeoff gross weight, kg
-        W_engine = 1179 # GE90-110B1 engine weight (single), kg
-    end;
+    # ============================================================
+    # Reference quantities
+    # ============================================================
+    TOGW = 33614.1          # Takeoff gross weight, kg
+    W_engine = 1179.0       # GE CF34-8E dry weight per engine, kg
 
-    # ╔═╡ e7bcb068-b1b4-45c3-a549-75d6af6dc871
-    lb_ft2_to_kg_m2 = 4.88243 # Convert lb/ft² to kg/m²
+    # Unit conversions
+    kg_to_lb = 2.20462262185
+    lb_ft2_to_kg_m2 = 4.88243
+
+    # ============================================================
+    # Ultimate load factor
+    # FAR / transport-aircraft style preliminary estimate:
+    # n_limit = min(2.1 + 24000/(W_lb + 10000), 3.8)
+    # n_ult   = 1.5 * n_limit
+    # ============================================================
+    TOGW_lb = TOGW * kg_to_lb
+    n_limit_pos = min(2.1 + 24000.0 / (TOGW_lb + 10000.0), 3.8)
+    n_ult = 1.5 * n_limit_pos
+end;
+
 
     # ╔═╡ 70f129d3-ffa8-4019-bd53-34185ad85356
     md"For the previously generated wing, the total longitudinal moment (with MAC at $40%) with respect to the nose as origin is:"
@@ -1032,266 +1048,636 @@
             x_LEMAC_m = [x_LEMAC_export, x_LEMAC_export]
         )
 
-        # ============================================================
-        # 2) MISSION CG EXCURSION
-        # Uses mission result: total fuel fraction with trapped = 28.658%
-        # ============================================================
+# ============================================================
+# 2) WEIGHT & BALANCE LOADING CASES, MISSION CG, AND PLOTS
+# ============================================================
 
-        x_fuel_export = mac40_w.x
-        # ============================================================
-        # FUEL WEIGHT CONSISTENT WITH TOGW
-        # ============================================================
+# ------------------------------------------------------------
+# Useful loads based on project assumptions
+# ------------------------------------------------------------
+W_pax_each  = 90.0
+W_bag_each  = 15.0
+W_crew_each = 90.0
 
-        zero_fuel_items = copy(weight_position)
+n_crew = 4
+n_pax  = 70
 
-        zero_fuel_items["crew"] = (W_crew_export, x_crew_export)
-        zero_fuel_items["baggage"] = (W_baggage_export, x_baggage_export)
-        zero_fuel_items["pax_forward"] = (W_pax_fwd, x_pax_fwd)
-        zero_fuel_items["pax_middle"] = (W_pax_mid, x_pax_mid)
-        zero_fuel_items["pax_aft"] = (W_pax_aft, x_pax_aft)
+W_crew_export = n_crew * W_crew_each
+x_crew_export = 0.55 * l_nose
 
-        zero_fuel_cg = cg_export(zero_fuel_items)
-        W_zero_fuel = zero_fuel_cg.W
+W_baggage_export = n_pax * W_bag_each
+x_baggage_export = l_nose + 0.70 * l_cabin
 
-        W_fuel_export = TOGW - W_zero_fuel
+# Passenger groups for CG calculations
+n_pax_groups = 14
+pax_per_group = fill(n_pax ÷ n_pax_groups, n_pax_groups)
+for i in 1:(n_pax - sum(pax_per_group))
+    pax_per_group[i] += 1
+end
 
-        if W_fuel_export < 0
-            error("Zero-fuel weight exceeds TOGW. Reduce OEW/payload or increase TOGW.")
-        end
+x_pax_groups = [
+    l_nose + (i - 0.5) / n_pax_groups * l_cabin
+    for i in 1:n_pax_groups
+]
 
-        println("Zero-fuel weight = ", round(W_zero_fuel, digits=2), " kg")
-        println("Fuel allowed by TOGW = ", round(W_fuel_export, digits=2), " kg")
-        println("Fuel fraction = ", round(W_fuel_export / TOGW * 100, digits=2), " %")
+W_pax_total = n_pax * W_pax_each
+x_pax_total = sum((pax_per_group[i] * W_pax_each) * x_pax_groups[i] for i in 1:n_pax_groups) / W_pax_total
 
-        final_beta = 0.8541905037739782
+# Fuel CG near wing MAC 40%
+x_fuel_export = mac40_w.x
 
-        mission_defs = [
-            ("Start / full fuel",               1.0000000000),
-            ("After warm-up",                  0.9900000000),
-            ("After taxi",                     0.9801000000),
-            ("After takeoff",                  0.9751995000),
-            ("After climb",                    0.9556955100),
-            ("After outbound cruise",          0.8904030708),
-            ("After loiter",                   0.8697770000),
-            ("After descent",                  0.8610790000),
-            ("After landing",                  0.8541905038)
-        ]
+# ------------------------------------------------------------
+# Helper functions
+# ------------------------------------------------------------
+function pctMAC_export(x)
+    return 100 * (x - x_LEMAC_export) / c_w
+end
 
-        # ============================================================
-        # USEFUL LOAD DEFINITIONS
-        # ============================================================
+function cg_export(items)
+    W = sum(w for (w, x) in values(items))
+    M = sum(w * x for (w, x) in values(items))
+    xcg = M / W
+    return (W = W, xcg = xcg, pctMAC = pctMAC_export(xcg))
+end
 
-        W_pax_each = 90.0
-        W_bag_each = 15.0
-        W_crew_each = 90.0
+function sm_datcom_from_xcg(xcg)
+    return 100 * (x_np_DATCOM_export - xcg) / c_w
+end
 
-        n_crew = 4   # change if your design assumes 2, 3, or 4 crew
+function sm_vlm_from_xcg(xcg)
+    return 100 * (x_np_VLM_export - xcg) / c_w
+end
 
-        W_crew_export = n_crew * W_crew_each
-        x_crew_export = 0.55 * l_nose
+function passenger_items_dict()
+    return Dict(
+        "pax_group_$(i)" => (pax_per_group[i] * W_pax_each, x_pax_groups[i])
+        for i in 1:n_pax_groups
+    )
+end
 
-        W_pax_fwd = 20 * W_pax_each
-        W_pax_mid = 25 * W_pax_each
-        W_pax_aft = 25 * W_pax_each
-        W_baggage_export = 70 * W_bag_each
+function add_items!(items, more_items)
+    for (name, wx) in more_items
+        items[name] = wx
+    end
+    return items
+end
 
-        x_pax_fwd = l_nose + 0.20 * l_cabin
-        x_pax_mid = l_nose + 0.50 * l_cabin
-        x_pax_aft = l_nose + 0.80 * l_cabin
-        x_baggage_export = l_nose + 0.70 * l_cabin
+# ------------------------------------------------------------
+# Existing neutral points
+# ------------------------------------------------------------
+x_np_DATCOM_export = x_np
+x_np_VLM_export = r_np_vlm.x
 
-        mission_cg = DataFrame(
-            Phase = String[],
-            Beta = Float64[],
-            Fuel_remaining_fraction = Float64[],
-            Weight_kg = Float64[],
-            x_cg_m = Float64[],
-            CG_percent_MAC = Float64[],
-            SM_DATCOM_percent = Float64[],
-            SM_VLM_percent = Float64[]
+# ------------------------------------------------------------
+# Original empty/component CG + SM
+# ------------------------------------------------------------
+original_results = DataFrame(
+    Method = ["DATCOM", "VLM"],
+    x_cg_m = [x_cg, x_cg],
+    CG_percent_MAC = [pctMAC_export(x_cg), pctMAC_export(x_cg)],
+    x_np_m = [x_np_DATCOM_export, x_np_VLM_export],
+    Static_margin_percent = [100 * SM, 100 * SM_VLM],
+    MAC_m = [c_w, c_w],
+    x_LEMAC_m = [x_LEMAC_export, x_LEMAC_export]
+)
+
+# ------------------------------------------------------------
+# Zero-fuel and full-fuel weights
+# ------------------------------------------------------------
+zero_fuel_items = copy(weight_position)
+zero_fuel_items["crew"] = (W_crew_export, x_crew_export)
+zero_fuel_items["baggage"] = (W_baggage_export, x_baggage_export)
+add_items!(zero_fuel_items, passenger_items_dict())
+
+zero_fuel_cg = cg_export(zero_fuel_items)
+W_zero_fuel = zero_fuel_cg.W
+
+W_fuel_export = TOGW - W_zero_fuel
+
+if W_fuel_export < 0
+    error("Zero-fuel weight exceeds TOGW. Reduce OEW/payload or increase TOGW.")
+end
+
+println("Zero-fuel weight = ", round(W_zero_fuel, digits=2), " kg")
+println("Fuel allowed by TOGW = ", round(W_fuel_export, digits=2), " kg")
+println("Fuel fraction = ", round(W_fuel_export / TOGW * 100, digits=2), " %")
+
+# ------------------------------------------------------------
+# Loading groups
+# ------------------------------------------------------------
+load_groups = Dict(
+    "Crew" => Dict("crew" => (W_crew_export, x_crew_export)),
+    "Fuel" => Dict("fuel" => (W_fuel_export, x_fuel_export)),
+    "Payload" => merge(
+        Dict("baggage" => (W_baggage_export, x_baggage_export)),
+        passenger_items_dict()
+    )
+)
+
+function loading_sequence_export(sequence_name, sequence)
+    items = copy(weight_position)
+
+    df = DataFrame(
+        Sequence = String[],
+        Step_No = Int[],
+        Step = String[],
+        Weight_kg = Float64[],
+        x_cg_m = Float64[],
+        CG_percent_MAC = Float64[],
+        SM_DATCOM_percent = Float64[],
+        SM_VLM_percent = Float64[]
+    )
+
+    cg = cg_export(items)
+    push!(df, (
+        sequence_name,
+        0,
+        "Empty weight",
+        cg.W,
+        cg.xcg,
+        cg.pctMAC,
+        sm_datcom_from_xcg(cg.xcg),
+        sm_vlm_from_xcg(cg.xcg)
+    ))
+
+    step_no = 1
+    for group_name in sequence
+        add_items!(items, load_groups[group_name])
+        cg = cg_export(items)
+
+        push!(df, (
+            sequence_name,
+            step_no,
+            "Add " * group_name,
+            cg.W,
+            cg.xcg,
+            cg.pctMAC,
+            sm_datcom_from_xcg(cg.xcg),
+            sm_vlm_from_xcg(cg.xcg)
+        ))
+        step_no += 1
+    end
+
+    return df
+end
+
+# Representative loading sequence
+loading_main = loading_sequence_export(
+    "Empty → Crew → Fuel → Payload",
+    ["Crew", "Fuel", "Payload"]
+)
+
+# Several loading cases for CG limit search
+loading_scenarios = vcat(
+    loading_sequence_export("Crew-Fuel-Payload", ["Crew", "Fuel", "Payload"]),
+    loading_sequence_export("Crew-Payload-Fuel", ["Crew", "Payload", "Fuel"]),
+    loading_sequence_export("Fuel-Crew-Payload", ["Fuel", "Crew", "Payload"]),
+    loading_sequence_export("Fuel-Payload-Crew", ["Fuel", "Payload", "Crew"]),
+    loading_sequence_export("Payload-Crew-Fuel", ["Payload", "Crew", "Fuel"]),
+    loading_sequence_export("Payload-Fuel-Crew", ["Payload", "Fuel", "Crew"])
+)
+
+# ------------------------------------------------------------
+# Mission CG excursion due to fuel burn
+# TWO-WAY MISSION WITHOUT REFUELING
+# ------------------------------------------------------------
+one_leg_beta_profile = [
+    ("Start of leg",       1.0000000000),
+    ("After warm-up",      0.9900000000),
+    ("After taxi",         0.9801000000),
+    ("After takeoff",      0.9751995000),
+    ("After climb",        0.9556955100),
+    ("After cruise",       0.8904030708),
+    ("After loiter",       0.8697770000),
+    ("After descent",      0.8610790000),
+    ("After landing",      0.8541905038)
+]
+
+one_leg_final_beta = one_leg_beta_profile[end][2]
+one_leg_burn = 1.0 - one_leg_final_beta
+
+landing_fuel_remaining_fraction = 0.06
+
+function one_leg_progress(beta)
+    return (1.0 - beta) / one_leg_burn
+end
+
+mission_defs = Tuple{String, Float64}[]
+
+for (phase, beta_leg) in one_leg_beta_profile
+    push!(mission_defs, ("Outbound - " * phase, 0.5 * one_leg_progress(beta_leg)))
+end
+
+for (phase, beta_leg) in one_leg_beta_profile[2:end]
+    push!(mission_defs, ("Return - " * phase, 0.5 + 0.5 * one_leg_progress(beta_leg)))
+end
+
+mission_cg = DataFrame(
+    Phase = String[],
+    Mission_progress = Float64[],
+    Beta = Float64[],
+    Fuel_remaining_fraction = Float64[],
+    Fuel_mass_kg = Float64[],
+    Weight_kg = Float64[],
+    x_cg_m = Float64[],
+    CG_percent_MAC = Float64[],
+    SM_DATCOM_percent = Float64[],
+    SM_VLM_percent = Float64[]
+)
+
+for (phase, progress) in mission_defs
+    items = copy(weight_position)
+
+    items["crew"] = (W_crew_export, x_crew_export)
+    items["baggage"] = (W_baggage_export, x_baggage_export)
+    add_items!(items, passenger_items_dict())
+
+    fuel_remaining_fraction =
+        landing_fuel_remaining_fraction +
+        (1.0 - progress) * (1.0 - landing_fuel_remaining_fraction)
+
+    fuel_remaining_fraction = clamp(fuel_remaining_fraction, 0.0, 1.0)
+    fuel_mass = W_fuel_export * fuel_remaining_fraction
+    items["fuel"] = (fuel_mass, x_fuel_export)
+
+    cg = cg_export(items)
+    beta_actual = cg.W / TOGW
+
+    push!(mission_cg, (
+        phase,
+        progress,
+        beta_actual,
+        fuel_remaining_fraction,
+        fuel_mass,
+        cg.W,
+        cg.xcg,
+        cg.pctMAC,
+        sm_datcom_from_xcg(cg.xcg),
+        sm_vlm_from_xcg(cg.xcg)
+    ))
+end
+
+# ------------------------------------------------------------
+# Good boarding method potato plot
+# Use a balanced-zone boarding order, plus unloading
+# ------------------------------------------------------------
+n_board_zones = 6
+pax_per_zone_board = fill(n_pax ÷ n_board_zones, n_board_zones)
+for i in 1:(n_pax - sum(pax_per_zone_board))
+    pax_per_zone_board[i] += 1
+end
+
+x_zone_board = [
+    l_nose + (i - 0.5) / n_board_zones * l_cabin
+    for i in 1:n_board_zones
+]
+
+good_boarding_order = [3, 4, 2, 5, 1, 6]   # balanced-zone style
+
+function good_boarding_trace()
+    items = copy(weight_position)
+
+    # Start from OEW + crew + full fuel
+    items["crew"] = (W_crew_export, x_crew_export)
+    items["fuel"] = (W_fuel_export, x_fuel_export)
+
+    df = DataFrame(
+        Method = String[],
+        Step_No = Int[],
+        Step = String[],
+        Weight_kg = Float64[],
+        x_cg_m = Float64[],
+        CG_percent_MAC = Float64[],
+        SM_DATCOM_percent = Float64[],
+        SM_VLM_percent = Float64[]
+    )
+
+    function push_state!(df, items, method_name, step_no, step_name)
+        cg = cg_export(items)
+        push!(df, (
+            method_name,
+            step_no,
+            step_name,
+            cg.W,
+            cg.xcg,
+            cg.pctMAC,
+            sm_datcom_from_xcg(cg.xcg),
+            sm_vlm_from_xcg(cg.xcg)
+        ))
+    end
+
+    step_no = 0
+    push_state!(df, items, "Balanced-zone boarding", step_no, "Start: OEW + crew + fuel")
+
+    step_no += 1
+    items["baggage"] = (W_baggage_export, x_baggage_export)
+    push_state!(df, items, "Balanced-zone boarding", step_no, "Add baggage")
+
+    for idx in good_boarding_order
+        step_no += 1
+        items["board_zone_$(idx)"] = (
+            pax_per_zone_board[idx] * W_pax_each,
+            x_zone_board[idx]
         )
+        push_state!(df, items, "Balanced-zone boarding", step_no, "Board zone $(idx)")
+    end
 
-        for (phase, beta) in mission_defs
-            items = copy(weight_position)
+    for idx in reverse(good_boarding_order)
+        step_no += 1
+        delete!(items, "board_zone_$(idx)")
+        push_state!(df, items, "Balanced-zone boarding", step_no, "Unload zone $(idx)")
+    end
 
-            # Add payload and crew for the flight mission
-            items["crew"] = (W_crew_export, x_crew_export)
-            items["baggage"] = (W_baggage_export, x_baggage_export)
-            items["pax_forward"] = (W_pax_fwd, x_pax_fwd)
-            items["pax_middle"] = (W_pax_mid, x_pax_mid)
-            items["pax_aft"] = (W_pax_aft, x_pax_aft)
+    step_no += 1
+    delete!(items, "baggage")
+    push_state!(df, items, "Balanced-zone boarding", step_no, "Unload baggage")
 
-            # Add remaining mission fuel
-            fuel_remaining_fraction = (beta - final_beta) / (1.0 - final_beta)
-            fuel_remaining_fraction = clamp(fuel_remaining_fraction, 0.0, 1.0)
+    return df
+end
 
-            items["fuel"] = (W_fuel_export * fuel_remaining_fraction, x_fuel_export)
+boarding_cg = good_boarding_trace()
 
-            cg = cg_export(items)
+# ------------------------------------------------------------
+# Gather all CG cases and determine limits
+# ------------------------------------------------------------
+mission_cases = DataFrame(
+    Source = fill("Mission fuel burn", nrow(mission_cg)),
+    Case = mission_cg.Phase,
+    Weight_kg = mission_cg.Weight_kg,
+    x_cg_m = mission_cg.x_cg_m,
+    CG_percent_MAC = mission_cg.CG_percent_MAC,
+    SM_DATCOM_percent = mission_cg.SM_DATCOM_percent,
+    SM_VLM_percent = mission_cg.SM_VLM_percent
+)
 
-            push!(mission_cg, (
-                phase,
-                beta,
-                fuel_remaining_fraction,
-                cg.W,
-                cg.xcg,
-                cg.pctMAC,
-                100 * (x_np_DATCOM_export - cg.xcg) / c_w,
-                100 * (x_np_VLM_export - cg.xcg) / c_w
-            ))
-        end
+boarding_cases = DataFrame(
+    Source = fill("Boarding potato plot", nrow(boarding_cg)),
+    Case = boarding_cg.Method .* " - " .* boarding_cg.Step,
+    Weight_kg = boarding_cg.Weight_kg,
+    x_cg_m = boarding_cg.x_cg_m,
+    CG_percent_MAC = boarding_cg.CG_percent_MAC,
+    SM_DATCOM_percent = boarding_cg.SM_DATCOM_percent,
+    SM_VLM_percent = boarding_cg.SM_VLM_percent
+)
 
-        # ============================================================
-        # 3) BOARDING POTATO PLOT
-        # Uses existing l_nose and l_cabin from your file
-        # ============================================================
+loading_cases = DataFrame(
+    Source = fill("Loading scenarios", nrow(loading_scenarios)),
+    Case = loading_scenarios.Sequence .* " - " .* loading_scenarios.Step,
+    Weight_kg = loading_scenarios.Weight_kg,
+    x_cg_m = loading_scenarios.x_cg_m,
+    CG_percent_MAC = loading_scenarios.CG_percent_MAC,
+    SM_DATCOM_percent = loading_scenarios.SM_DATCOM_percent,
+    SM_VLM_percent = loading_scenarios.SM_VLM_percent
+)
 
-        W_pax_each = 90.0
-        W_bag_each = 15.0
+all_cg_cases = vcat(loading_cases, mission_cases, boarding_cases)
 
-        W_pax_fwd = 20 * W_pax_each
-        W_pax_mid = 25 * W_pax_each
-        W_pax_aft = 25 * W_pax_each
-        W_baggage_export = 70 * W_bag_each
+fwd_idx = argmin(all_cg_cases.CG_percent_MAC)
+aft_idx = argmax(all_cg_cases.CG_percent_MAC)
 
-        x_pax_fwd = l_nose + 0.20 * l_cabin
-        x_pax_mid = l_nose + 0.50 * l_cabin
-        x_pax_aft = l_nose + 0.80 * l_cabin
-        x_baggage_export = l_nose + 0.70 * l_cabin
+cg_limits = DataFrame(
+    Limit = ["Forward CG limit from cases", "Aft CG limit from cases"],
+    Source = [all_cg_cases.Source[fwd_idx], all_cg_cases.Source[aft_idx]],
+    Critical_case = [all_cg_cases.Case[fwd_idx], all_cg_cases.Case[aft_idx]],
+    Weight_kg = [all_cg_cases.Weight_kg[fwd_idx], all_cg_cases.Weight_kg[aft_idx]],
+    x_cg_m = [all_cg_cases.x_cg_m[fwd_idx], all_cg_cases.x_cg_m[aft_idx]],
+    CG_percent_MAC = [all_cg_cases.CG_percent_MAC[fwd_idx], all_cg_cases.CG_percent_MAC[aft_idx]],
+    SM_DATCOM_percent = [all_cg_cases.SM_DATCOM_percent[fwd_idx], all_cg_cases.SM_DATCOM_percent[aft_idx]],
+    SM_VLM_percent = [all_cg_cases.SM_VLM_percent[fwd_idx], all_cg_cases.SM_VLM_percent[aft_idx]]
+)
 
-        base_boarding = copy(weight_position)
-        base_boarding["fuel"] = (W_fuel_export, x_fuel_export)
-        base_boarding["baggage"] = (W_baggage_export, x_baggage_export)
-        base_boarding["crew"] = (W_crew_export, x_crew_export)
+# Reference CG range from lecture slide
+fwd_cg_limit_pct = 12.0
+aft_cg_limit_pct = 32.0
 
-        function boarding_export(sequence_name, sequence)
-            items = copy(base_boarding)
+cg_reference_check = DataFrame(
+    Quantity = ["Minimum CG", "Maximum CG", "Forward reference", "Aft reference", "Within 12–32% MAC?"],
+    Value = Any[
+        minimum(all_cg_cases.CG_percent_MAC),
+        maximum(all_cg_cases.CG_percent_MAC),
+        fwd_cg_limit_pct,
+        aft_cg_limit_pct,
+        minimum(all_cg_cases.CG_percent_MAC) >= fwd_cg_limit_pct &&
+        maximum(all_cg_cases.CG_percent_MAC) <= aft_cg_limit_pct
+    ]
+)
 
-            df = DataFrame(
-                Sequence = String[],
-                Step = String[],
-                Weight_kg = Float64[],
-                x_cg_m = Float64[],
-                CG_percent_MAC = Float64[]
-            )
+println(cg_limits)
+println(cg_reference_check)
 
-            cg = cg_export(items)
-            push!(df, (sequence_name, "Start: crew + fuel + baggage", cg.W, cg.xcg, cg.pctMAC))
+# ============================================================
+# 7) PLOTS
+# ============================================================
+x_min_plot = min(minimum(all_cg_cases.CG_percent_MAC) - 2, fwd_cg_limit_pct - 2)
+x_max_plot = max(maximum(all_cg_cases.CG_percent_MAC) + 2, aft_cg_limit_pct + 2)
+y_min_plot = minimum(all_cg_cases.Weight_kg) - 1000
+y_max_plot = maximum(all_cg_cases.Weight_kg) + 1000
 
-            for (step_name, pax_item) in sequence
-                items[step_name] = pax_item
-                cg = cg_export(items)
-                push!(df, (sequence_name, step_name, cg.W, cg.xcg, cg.pctMAC))
-            end
+# ------------------------------------------------------------
+# Representative loading-case CG curve
+# ------------------------------------------------------------
+loading_cases_plot = plot(
+    loading_main.CG_percent_MAC,
+    loading_main.Weight_kg,
+    marker = :square,
+    linewidth = 2.5,
+    xlabel = "CG location (%MAC)",
+    ylabel = "Aircraft weight (kg)",
+    title = "CG in Representative Loading Cases",
+    label = "Empty → Crew → Fuel → Payload",
+    grid = true,
+    legend = :topright
+)
 
-            return df
-        end
+vline!(loading_cases_plot, [fwd_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Forward CG ref. limit")
+vline!(loading_cases_plot, [aft_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Aft CG ref. limit")
 
-        front_to_back = boarding_export("Front to back", [
-            ("Forward cabin", (W_pax_fwd, x_pax_fwd)),
-            ("Middle cabin",  (W_pax_mid, x_pax_mid)),
-            ("Aft cabin",     (W_pax_aft, x_pax_aft))
-        ])
+for i in 1:nrow(loading_main)
+    annotate!(
+        loading_cases_plot,
+        loading_main.CG_percent_MAC[i],
+        loading_main.Weight_kg[i],
+        text(loading_main.Step[i], 7, :left)
+    )
+end
 
-        back_to_front = boarding_export("Back to front", [
-            ("Aft cabin",     (W_pax_aft, x_pax_aft)),
-            ("Middle cabin",  (W_pax_mid, x_pax_mid)),
-            ("Forward cabin", (W_pax_fwd, x_pax_fwd))
-        ])
+# ------------------------------------------------------------
+# Mission CG curve with annotations
+# ------------------------------------------------------------
+mission_cg_plot = plot(
+    mission_cg.CG_percent_MAC,
+    mission_cg.Weight_kg,
+    marker = :circle,
+    linewidth = 2.5,
+    xlabel = "CG location (%MAC)",
+    ylabel = "Aircraft weight (kg)",
+    title = "Mission CG Excursion Due to Fuel Burn (Two-Way Mission)",
+    label = "Mission fuel burn",
+    grid = true,
+    legend = :topright
+)
 
-        boarding_cg = vcat(front_to_back, back_to_front)
+vline!(mission_cg_plot, [fwd_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Forward CG ref. limit")
+vline!(mission_cg_plot, [aft_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Aft CG ref. limit")
 
-                # ============================================================
-        # FORWARD AND AFT CG LIMITS FROM CONSIDERED CASES
-        # Mission fuel-burn + boarding potato plot
-        # ============================================================
+mission_labels = Dict(
+    "Outbound - Start of leg" => "HKG departure",
+    "Outbound - After climb" => "Outbound climb",
+    "Outbound - After cruise" => "Outbound cruise",
+    "Outbound - After landing" => "Outstation landing",
+    "Return - After takeoff" => "Return takeoff",
+    "Return - After cruise" => "Return cruise",
+    "Return - After landing" => "Final landing"
+)
 
-        mission_cases = DataFrame(
-            Source = fill("Mission fuel burn", nrow(mission_cg)),
-            Case = mission_cg.Phase,
-            Weight_kg = mission_cg.Weight_kg,
-            x_cg_m = mission_cg.x_cg_m,
-            CG_percent_MAC = mission_cg.CG_percent_MAC,
-            SM_DATCOM_percent = mission_cg.SM_DATCOM_percent,
-            SM_VLM_percent = mission_cg.SM_VLM_percent
+for i in 1:nrow(mission_cg)
+    phase = mission_cg.Phase[i]
+    if haskey(mission_labels, phase)
+        annotate!(
+            mission_cg_plot,
+            mission_cg.CG_percent_MAC[i],
+            mission_cg.Weight_kg[i],
+            text(mission_labels[phase], 7, :left)
         )
+    end
+end
 
-        boarding_cases = DataFrame(
-            Source = fill("Boarding potato plot", nrow(boarding_cg)),
-            Case = boarding_cg.Sequence .* " - " .* boarding_cg.Step,
-            Weight_kg = boarding_cg.Weight_kg,
-            x_cg_m = boarding_cg.x_cg_m,
-            CG_percent_MAC = boarding_cg.CG_percent_MAC,
-            SM_DATCOM_percent = 100 .* (x_np_DATCOM_export .- boarding_cg.x_cg_m) ./ c_w,
-            SM_VLM_percent = 100 .* (x_np_VLM_export .- boarding_cg.x_cg_m) ./ c_w
-        )
+mission_only_plot = mission_cg_plot
 
-        all_cg_cases = mission_cases
+# ------------------------------------------------------------
+# Potato plot: good boarding method with loading + unloading
+# ------------------------------------------------------------
+first_unload_idx = findfirst(s -> startswith(s, "Unload"), boarding_cg.Step)
+full_load_idx = first_unload_idx - 1
 
-        # Smaller %MAC = forward CG, larger %MAC = aft CG
-        fwd_idx = argmin(all_cg_cases.CG_percent_MAC)
-        aft_idx = argmax(all_cg_cases.CG_percent_MAC)
+load_rows = 1:full_load_idx
+unload_rows = first_unload_idx:nrow(boarding_cg)
 
-        cg_limits = DataFrame(
-            Limit = ["Forward CG limit", "Aft CG limit"],
-            Source = [all_cg_cases.Source[fwd_idx], all_cg_cases.Source[aft_idx]],
-            Critical_case = [all_cg_cases.Case[fwd_idx], all_cg_cases.Case[aft_idx]],
-            Weight_kg = [all_cg_cases.Weight_kg[fwd_idx], all_cg_cases.Weight_kg[aft_idx]],
-            x_cg_m = [all_cg_cases.x_cg_m[fwd_idx], all_cg_cases.x_cg_m[aft_idx]],
-            CG_percent_MAC = [all_cg_cases.CG_percent_MAC[fwd_idx], all_cg_cases.CG_percent_MAC[aft_idx]],
-            SM_DATCOM_percent = [all_cg_cases.SM_DATCOM_percent[fwd_idx], all_cg_cases.SM_DATCOM_percent[aft_idx]],
-            SM_VLM_percent = [all_cg_cases.SM_VLM_percent[fwd_idx], all_cg_cases.SM_VLM_percent[aft_idx]]
-        )
+potato_plot = plot(
+    xlabel = "CG location (%MAC)",
+    ylabel = "Aircraft weight (kg)",
+    title = "Boarding Potato Plot — Balanced-Zone Boarding",
+    legend = :topright,
+    grid = true
+)
 
-        cg_limits
+plot!(
+    potato_plot,
+    boarding_cg.CG_percent_MAC[load_rows],
+    boarding_cg.Weight_kg[load_rows],
+    marker = :circle,
+    linewidth = 2.5,
+    label = "Loading"
+)
 
-        # ============================================================
-        # 4) PLOTS
-        # ============================================================
+plot!(
+    potato_plot,
+    boarding_cg.CG_percent_MAC[unload_rows],
+    boarding_cg.Weight_kg[unload_rows],
+    marker = :diamond,
+    linewidth = 2.5,
+    label = "Unloading"
+)
 
-        mission_cg_plot = plot(
-            mission_cg.CG_percent_MAC,
-            mission_cg.Weight_kg,
-            marker = :circle,
-            xlabel = "CG (%MAC)",
-            ylabel = "Aircraft Weight (kg)",
-            title = "Mission CG Excursion",
-            label = "Fuel burn"
-        )
+vline!(potato_plot, [fwd_cg_limit_pct], linestyle = :dot, linewidth = 2, label = "Forward CG ref. limit")
+vline!(potato_plot, [aft_cg_limit_pct], linestyle = :dot, linewidth = 2, label = "Aft CG ref. limit")
 
-        sm_plot = plot(
-            mission_cg.CG_percent_MAC,
-            mission_cg.SM_DATCOM_percent,
-            marker = :circle,
-            xlabel = "CG (%MAC)",
-            ylabel = "Static Margin (%)",
-            title = "Static Margin During Mission",
-            label = "DATCOM"
-        )
+annotate!(potato_plot, boarding_cg.CG_percent_MAC[1], boarding_cg.Weight_kg[1], text("Start", 8, :right))
+annotate!(potato_plot, boarding_cg.CG_percent_MAC[full_load_idx], boarding_cg.Weight_kg[full_load_idx], text("Full load", 8, :left))
+annotate!(potato_plot, boarding_cg.CG_percent_MAC[end], boarding_cg.Weight_kg[end], text("Unload complete", 8, :left))
 
-        plot!(
-            mission_cg.CG_percent_MAC,
-            mission_cg.SM_VLM_percent,
-            marker = :diamond,
-            label = "VLM"
-        )
+# ------------------------------------------------------------
+# Static margin during loading cases
+# ------------------------------------------------------------
+sm_loading_plot = plot(
+    loading_main.Step_No,
+    loading_main.SM_DATCOM_percent,
+    marker = :circle,
+    linewidth = 2,
+    xlabel = "Loading step",
+    ylabel = "Static Margin (%)",
+    title = "Static Margin During Representative Loading Cases",
+    label = "DATCOM",
+    xticks = (loading_main.Step_No, loading_main.Step),
+    xrotation = 20,
+    grid = true
+)
 
-        potato_plot = plot(
-            front_to_back.CG_percent_MAC,
-            front_to_back.Weight_kg,
-            marker = :circle,
-            xlabel = "CG (%MAC)",
-            ylabel = "Aircraft Weight (kg)",
-            title = "Boarding Potato Plot",
-            label = "Front to back"
-        )
+plot!(
+    sm_loading_plot,
+    loading_main.Step_No,
+    loading_main.SM_VLM_percent,
+    marker = :diamond,
+    linewidth = 2,
+    label = "VLM"
+)
 
-        plot!(
-            back_to_front.CG_percent_MAC,
-            back_to_front.Weight_kg,
-            marker = :diamond,
-            label = "Back to front"
-        )
+# ------------------------------------------------------------
+# Static margin during mission
+# ------------------------------------------------------------
+sm_mission_plot = plot(
+    mission_cg.Mission_progress,
+    mission_cg.SM_DATCOM_percent,
+    marker = :circle,
+    linewidth = 2,
+    xlabel = "Mission progress (0 = departure, 1 = final landing)",
+    ylabel = "Static Margin (%)",
+    title = "Static Margin During Two-Way Mission",
+    label = "DATCOM",
+    grid = true
+)
+
+plot!(
+    sm_mission_plot,
+    mission_cg.Mission_progress,
+    mission_cg.SM_VLM_percent,
+    marker = :diamond,
+    linewidth = 2,
+    label = "VLM"
+)
+
+# ------------------------------------------------------------
+# Combined CG excursion plot (tidier)
+# ------------------------------------------------------------
+cg_excursion_plot = plot(
+    xlim = (x_min_plot, x_max_plot),
+    ylim = (y_min_plot, y_max_plot),
+    xlabel = "CG location (%MAC)",
+    ylabel = "Aircraft weight (kg)",
+    title = "CG Excursion / Envelope Plot",
+    legend = :topright,
+    grid = true
+)
+
+vline!(cg_excursion_plot, [fwd_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Forward CG ref. limit")
+vline!(cg_excursion_plot, [aft_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Aft CG ref. limit")
+
+plot!(
+    cg_excursion_plot,
+    loading_main.CG_percent_MAC,
+    loading_main.Weight_kg,
+    marker = :square,
+    linewidth = 2,
+    label = "Representative loading cases"
+)
+
+plot!(
+    cg_excursion_plot,
+    mission_cg.CG_percent_MAC,
+    mission_cg.Weight_kg,
+    marker = :circle,
+    linewidth = 2,
+    label = "Two-way mission fuel burn"
+)
+
+plot!(
+    cg_excursion_plot,
+    boarding_cg.CG_percent_MAC,
+    boarding_cg.Weight_kg,
+    marker = :diamond,
+    linewidth = 2,
+    label = "Boarding / unloading"
+)
 
         # ============================================================
         # WEIGHT AND BALANCE TABLE FOR REPORT EXPORT
@@ -1322,26 +1708,93 @@
         end
 
         # Add useful loads for reporting only
-        extra_loads = Dict(
-            "crew_report" => (W_crew_export, x_crew_export),
-            "fuel_full_report" => (W_fuel_export, x_fuel_export),
-            "baggage_report" => (W_baggage_export, x_baggage_export),
-            "pax_forward_report" => (W_pax_fwd, x_pax_fwd),
-            "pax_middle_report" => (W_pax_mid, x_pax_mid),
-            "pax_aft_report" => (W_pax_aft, x_pax_aft)
-        )
+# Add useful loads for reporting only
+extra_loads = Dict(
+    "crew_report" => (W_crew_export, x_crew_export),
+    "fuel_full_report" => (W_fuel_export, x_fuel_export),
+    "baggage_report" => (W_baggage_export, x_baggage_export),
+    "passengers_total_report" => (W_pax_total, x_pax_total)
+)
 
-        for name in sort(collect(keys(extra_loads)))
-            W, x = extra_loads[name]
-            push!(weight_balance_table, (
-                name,
-                W,
-                W * g0,
-                x,
-                W * x,
-                W * g0 * x
-            ))
-        end
+for name in sort(collect(keys(extra_loads)))
+    W, x = extra_loads[name]
+    push!(weight_balance_table, (
+        name,
+        W,
+        W * g0,
+        x,
+        W * x,
+        W * g0 * x
+    ))
+end
+
+kg_to_lb = 2.20462262185
+m_to_ft = 3.280839895
+
+function group_row(group, component, W, x; note="")
+    return (
+        group,
+        component,
+        W,
+        x,
+        W * x,
+        W * kg_to_lb,
+        x * m_to_ft,
+        W * kg_to_lb * x * m_to_ft,
+        note
+    )
+end
+
+summary_group_weight_statement = DataFrame(
+    Group = String[],
+    Component = String[],
+    Weight_kg = Float64[],
+    Loc_m = Float64[],
+    Moment_kg_m = Float64[],
+    Weight_lb = Float64[],
+    Loc_ft = Float64[],
+    Moment_ft_lb = Float64[],
+    Notes = String[]
+)
+
+# Structures group
+for comp in ["wing", "htail", "vtail", "fuse", "noseLG", "mainLG"]
+    W, x = weight_position[comp]
+    push!(summary_group_weight_statement, group_row("Structures", comp, W, x; note="Raymer quick-and-dirty / geometry-based CG"))
+end
+
+# Propulsion group
+W_eng_installed, x_eng = weight_position["engine"]
+push!(summary_group_weight_statement, group_row("Propulsion", "installed engines", W_eng_installed, x_eng; note="1.3 × dry engine weight × 2"))
+
+# Equipment / all-else group
+W_other, x_other_group = weight_position["all-else"]
+push!(summary_group_weight_statement, group_row("Equipment", "all-else empty", W_other, x_other_group; note="Raymer quick-and-dirty allowance"))
+
+# Useful load group
+push!(summary_group_weight_statement, group_row("Useful load", "crew", W_crew_export, x_crew_export; note="4 crew assumed"))
+push!(summary_group_weight_statement, group_row("Useful load", "fuel usable", W_fuel_export, x_fuel_export; note="fuel mass from TOGW minus zero-fuel weight"))
+push!(summary_group_weight_statement, group_row("Useful load", "passengers", W_pax_total, x_pax_total; note="70 pax × 90 kg"))
+push!(summary_group_weight_statement, group_row("Useful load", "baggage", W_baggage_export, x_baggage_export; note="70 pax × 15 kg"))
+
+summary_group_totals = combine(
+    groupby(summary_group_weight_statement, :Group),
+    :Weight_kg => sum => :Weight_kg,
+    :Moment_kg_m => sum => :Moment_kg_m,
+    :Weight_lb => sum => :Weight_lb,
+    :Moment_ft_lb => sum => :Moment_ft_lb
+)
+
+summary_group_totals.Loc_m = summary_group_totals.Moment_kg_m ./ summary_group_totals.Weight_kg
+summary_group_totals.Loc_ft = summary_group_totals.Moment_ft_lb ./ summary_group_totals.Weight_lb
+
+# Overall full takeoff loading summary
+full_takeoff_items = copy(weight_position)
+full_takeoff_items["crew"] = (W_crew_export, x_crew_export)
+full_takeoff_items["fuel"] = (W_fuel_export, x_fuel_export)
+full_takeoff_items["baggage"] = (W_baggage_export, x_baggage_export)
+add_items!(full_takeoff_items, passenger_items_dict())
+full_takeoff_cg = cg_export(full_takeoff_items)
 
         weight_balance_plot = scatter(
             weight_balance_table.x_cg_m,
@@ -1502,6 +1955,10 @@
         CSV.write(joinpath(outdir, "all_cg_cases.csv"), all_cg_cases)
         CSV.write(joinpath(outdir, "cg_limits.csv"), cg_limits)
         CSV.write(joinpath(outdir, "aero_derivatives_summary.csv"), aero_derivatives_summary)
+        CSV.write(joinpath(outdir, "loading_scenarios.csv"), loading_scenarios)
+        CSV.write(joinpath(outdir, "summary_group_weight_statement.csv"), summary_group_weight_statement)
+        CSV.write(joinpath(outdir, "summary_group_totals.csv"), summary_group_totals)
+        CSV.write(joinpath(outdir, "cg_reference_check.csv"), cg_reference_check)
 
         open(joinpath(outdir, "aero_derivatives_summary.txt"), "w") do dio
             println(dio, "AERODYNAMIC AND STABILITY DERIVATIVES SUMMARY")
@@ -1510,71 +1967,103 @@
             show(dio, aero_derivatives_summary; allrows=true, allcols=true)
             println(dio)
         end
-        savefig(weight_balance_plot, joinpath(outdir, "weight_balance_component_locations.png"))
 
+
+        savefig(loading_cases_plot, joinpath(outdir, "loading_cases_cg_curve.png"))
         savefig(mission_cg_plot, joinpath(outdir, "mission_cg_excursion.png"))
-        savefig(sm_plot, joinpath(outdir, "static_margin_during_mission.png"))
+        savefig(mission_only_plot, joinpath(outdir, "mission_only_cg_excursion.png"))
         savefig(potato_plot, joinpath(outdir, "boarding_potato_plot.png"))
+        savefig(sm_loading_plot, joinpath(outdir, "static_margin_loading_cases.png"))
+        savefig(sm_mission_plot, joinpath(outdir, "static_margin_mission.png"))
+        savefig(cg_excursion_plot, joinpath(outdir, "cg_excursion_envelope_plot.png"))
+        savefig(weight_balance_plot, joinpath(outdir, "weight_balance_component_locations.png"))
 
         open(joinpath(outdir, "summary.txt"), "w") do io
 
-            function section(title)
-                println(io)
-                println(io, title)
-                println(io, repeat("=", 60))
-            end
+    function section(title)
+        println(io)
+        println(io, title)
+        println(io, repeat("=", 80))
+    end
 
-            function subsection(title)
-                println(io)
-                println(io, title)
-                println(io, repeat("-", 60))
-            end
+    function subsection(title)
+        println(io)
+        println(io, title)
+        println(io, repeat("-", 80))
+    end
 
-            function print_table(df)
-                show(io, df; allrows=true, allcols=true)
-                println(io)
-                println(io)
-            end
+    function print_table(df)
+        show(io, df; allrows=true, allcols=true)
+        println(io)
+        println(io)
+    end
 
-            section("CG AND STATIC MARGIN SUMMARY")
+    section("CG, STATIC MARGIN, AND LOAD FACTOR SUMMARY")
 
-            println(io, "Empty/component CG       = ", round(pctMAC_export(x_cg), digits=2), " %MAC")
-            println(io, "Empty/component DATCOM SM = ", round(100 * SM, digits=2), " %")
-            println(io, "Empty/component VLM SM    = ", round(100 * SM_VLM, digits=2), " %")
+    println(io, "Empty/component CG          = ", round(pctMAC_export(x_cg), digits=2), " %MAC")
+    println(io, "Empty/component DATCOM SM   = ", round(100 * SM, digits=2), " %")
+    println(io, "Empty/component VLM SM      = ", round(100 * SM_VLM, digits=2), " %")
+    println(io, "DATCOM neutral point        = ", round(x_np_DATCOM_export, digits=4), " m")
+    println(io, "VLM neutral point           = ", round(x_np_VLM_export, digits=4), " m")
+    println(io, "MAC                         = ", round(c_w, digits=4), " m")
+    println(io, "x_LEMAC                     = ", round(x_LEMAC_export, digits=4), " m")
 
-            println(io)
-            println(io, "Mission CG range          = ",
-                round(minimum(mission_cg.CG_percent_MAC), digits=2), " to ",
-                round(maximum(mission_cg.CG_percent_MAC), digits=2), " %MAC")
+    subsection("Ultimate Load Factor")
+    println(io, "TOGW                        = ", round(TOGW, digits=2), " kg")
+    println(io, "TOGW                        = ", round(TOGW_lb, digits=2), " lb")
+    println(io, "Positive limit load factor  = ", round(n_limit_pos, digits=4))
+    println(io, "Ultimate load factor        = ", round(n_ult, digits=4))
 
-            println(io, "Mission DATCOM SM range   = ",
-                round(minimum(mission_cg.SM_DATCOM_percent), digits=2), " to ",
-                round(maximum(mission_cg.SM_DATCOM_percent), digits=2), " %")
+    subsection("Mission CG and Static Margin Ranges")
+    println(io, "Mission CG range            = ",
+        round(minimum(mission_cg.CG_percent_MAC), digits=2), " to ",
+        round(maximum(mission_cg.CG_percent_MAC), digits=2), " %MAC")
 
-            println(io, "Mission VLM SM range      = ",
-                round(minimum(mission_cg.SM_VLM_percent), digits=2), " to ",
-                round(maximum(mission_cg.SM_VLM_percent), digits=2), " %")
-            println(io, "DATCOM NP    = ", round(x_np_DATCOM_export, digits=4), " m")
-            println(io, "VLM NP       = ", round(x_np_VLM_export, digits=4), " m")
-            println(io, "MAC          = ", round(c_w, digits=4), " m")
-            println(io, "x_LEMAC      = ", round(x_LEMAC_export, digits=4), " m")
+    println(io, "Mission DATCOM SM range     = ",
+        round(minimum(mission_cg.SM_DATCOM_percent), digits=2), " to ",
+        round(maximum(mission_cg.SM_DATCOM_percent), digits=2), " %")
 
-            subsection("Forward and Aft CG Limits")
-            print_table(cg_limits)
+    println(io, "Mission VLM SM range        = ",
+        round(minimum(mission_cg.SM_VLM_percent), digits=2), " to ",
+        round(maximum(mission_cg.SM_VLM_percent), digits=2), " %")
 
-            subsection("Mission CG Excursion")
-            print_table(mission_cg)
+    subsection("Forward and Aft CG Limits")
+    print_table(cg_limits)
 
-            subsection("Boarding Potato Plot Data")
-            print_table(boarding_cg)
+    subsection("CG Reference Check")
+    print_table(cg_reference_check)
 
-            subsection("Weight and Balance Table")
-            print_table(weight_balance_table)
+    subsection("Full Takeoff Summary")
+    println(io, "Full takeoff weight         = ", round(full_takeoff_cg.W, digits=2), " kg")
+    println(io, "Full takeoff x_cg           = ", round(full_takeoff_cg.xcg, digits=4), " m")
+    println(io, "Full takeoff CG             = ", round(full_takeoff_cg.pctMAC, digits=2), " %MAC")
+    println(io, "Full takeoff DATCOM SM      = ", round(sm_datcom_from_xcg(full_takeoff_cg.xcg), digits=2), " %")
+    println(io, "Full takeoff VLM SM         = ", round(sm_vlm_from_xcg(full_takeoff_cg.xcg), digits=2), " %")
 
-            subsection("Aerodynamic and Stability Derivatives")
-            print_table(aero_derivatives_summary)
+    subsection("Weight Balance Table")
+    print_table(weight_balance_table)
 
-        end
+    subsection("Summary Group Totals")
+    print_table(summary_group_totals)
+
+    subsection("Summary Group Weight Statement")
+    print_table(summary_group_weight_statement)
+
+    subsection("Representative Loading Cases")
+    print_table(loading_main)
+
+    subsection("All Loading Scenarios")
+    print_table(loading_scenarios)
+
+    subsection("Mission CG Excursion")
+    print_table(mission_cg)
+
+    subsection("Boarding Potato Data")
+    print_table(boarding_cg)
+
+    subsection("Aerodynamic and Stability Derivatives")
+    print_table(aero_derivatives_summary)
+end
 
         zipname = outdir * ".zip"
         z = ZipFile.Writer(zipname)
@@ -1591,6 +2080,8 @@
 
         original_results, mission_cg, boarding_cg, cg_limits, mission_cg_plot, sm_plot, potato_plot
     end
+
+
 
 
 
