@@ -56,8 +56,8 @@
 
     # ╔═╡ d9ef5002-70d7-40a8-81fa-7a07567eb613
     begin
-    foil_w_root = read_foil("Airfoil\\NASA_SC(2)_0714.txt") # Read the root airfoil
-    foil_w_tip  = read_foil("Airfoil\\NASA_SC(2)_0714.txt") # Read the tip airfoil
+    foil_w_root = read_foil("Airfoil\\NASA SC(2)-0714.txt") # Read the root airfoil
+    foil_w_tip  = read_foil("Airfoil\\NASA SC(2)-0714.txt")#Read the tip airfoil
     end
 
     # ╔═╡ a76599c7-563d-4647-8fda-36869d07ff71

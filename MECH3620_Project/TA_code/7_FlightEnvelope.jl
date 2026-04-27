@@ -49,6 +49,12 @@ md"""
 # ╔═╡ 0dc40a9d-9ad0-49bc-b343-a30cfffacfe9
 md"## Diagrams"
 
+# ╔═╡ 21e9223d-0580-489f-9ae4-0858f9fe9c0e
+# savefig(basic, "basic_flight_envelope.png") # UNCOMMENT TO SAVE IMAGE
+
+# ╔═╡ d2069530-895a-4e27-a596-666a06aa970f
+# savefig(gust, "gust_flight_envelope.png") # UNCOMMENT TO SAVE IMAGE
+
 # ╔═╡ 62f8208e-e282-4bde-bf75-7fc55554420b
 md"""
 
@@ -150,21 +156,21 @@ end
 # ╔═╡ 9d20ca8e-ddcb-11ed-32a6-1dde51336ac7
 begin
 	# Aircraft quantities
-	S_ref 	  	= 81.0	    # Reference area, m²
-	chord 	  	= 3.43 		# Reference chord length, m
-	CL_alpha  	= 6.47018		# Lift curve slope, /rad (USE DATCOM OR AEROFUSE)
-	CL_max 	  	= 1.45  		# Maximum CL (flaps retracted)
-	CL_min 	  	= -0.841		# Minimum CL (flaps retracted)	#By xfoil
+	S_ref 	  	= 31.	    # Reference area, m²
+	chord 	  	= 1.9 		# Reference chord length, m
+	CL_alpha  	= 5.64		# Lift curve slope, /rad (USE DATCOM OR AEROFUSE)
+	CL_max 	  	= 2.6  		# Maximum CL (flaps retracted)
+	CL_min 	  	= -1.2 		# Minimum CL (flaps retracted)
 
 	# Weight quantites
-	max_WS 		= 4069.0# Maximum wing loading, N/m²
-	factor 		= 0.89   		   	# % of the max wing loading (CRUISE WEIGHT!)# =beta_cruise1
+	max_WS 		= 2100 				# Maximum wing loading, N/m²
+	factor 		= 0.85   		   	# % of the max wing loading (CRUISE WEIGHT!)
 	WbyS 		= factor * max_WS  	# Wing loading
 
 	# Altitude and density relations
 	unit    	= "ft" 			   			 # Altitude units ("ft" or "m")
-	alt 		= 41000 		   			 # Cruise altitude
-	V_cruise  	= 0.78*295.1 				 # Cruise speed, m/s
+	alt 		= 35000. 		   			 # Cruise altitude
+	V_cruise  	= 203 						 # Cruise speed, m/s
 	rho_SL  	= density(0)       			 # Density at sea level
 	rho_alt 	= density(alt, units = unit) # Density at altitude
 	sigma		= rho_alt / rho_SL 			 # Density ratio
@@ -535,9 +541,6 @@ end
 # ╔═╡ 2739c649-a4d4-4413-aded-7b44233a16b0
 basic # Plot defined in appendix (ctrl+click or cmd+click)
 
-# ╔═╡ 21e9223d-0580-489f-9ae4-0858f9fe9c0e
- savefig(basic, "basic_flight_envelope.png") # UNCOMMENT TO SAVE IMAGE
-
 # ╔═╡ c6c2e036-75b8-4060-8837-9c142b982d8f
 mu_case = mu(WbyS, rho_alt, chord, CL_alpha, g) # μ
 
@@ -867,9 +870,6 @@ end
 
 # ╔═╡ 3e7af6bf-80cb-448d-87d4-05e813b77fa2
 gust # Plot defined in appendix
-
-# ╔═╡ d2069530-895a-4e27-a596-666a06aa970f
- savefig(gust, "gust_flight_envelope.png") # UNCOMMENT TO SAVE IMAGE
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
