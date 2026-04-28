@@ -62,22 +62,33 @@ Here, we'll refer to a passenger jet (based on a Boeing 777), but you can modify
 
 """
 
-# ╔═╡ 343af23b-4c4d-422b-81d2-4bc4e5407dac
-md"""### Fuselage"""
-
 # ╔═╡ 2ef0a234-499b-4e23-b7d7-c3fcadd14752
 # Fuselage definition
-fuse = HyperEllipseFuselage(
-    radius = 3.04,          # Radius, m
-    length = 63.5,          # Length, m
-    x_a    = 0.15,          # Start of cabin, ratio of length
-    x_b    = 0.7,           # End of cabin, ratio of length
-    c_nose = 1.6,            # Curvature of nose
-    c_rear = 1.3,           # Curvature of rear
-    d_nose = -0.5,          # "Droop" or "rise" of nose, m
-    d_rear = 1.0,           # "Droop" or "rise" of rear, m
-    position = [0.,0.,0.]   # Set nose at origin, m
-)
+begin
+            df_outer = 3.21
+            l_fuse   = 32.98
+            l_nose   = 4.91 
+            l_tail   = 8.99 # nose / diameter ratio = 2.8
+            l_cabin  = 18.62
+
+            x_a_cabin = l_nose / l_fuse
+            x_b_cabin = (l_nose + l_cabin) / l_fuse
+
+            fuse = HyperEllipseFuselage(
+                radius   = df_outer / 2,   # 1.605 m
+                length   = l_fuse,         # 28.83 m
+                x_a      = x_a_cabin,      # start of cabin
+                x_b      = x_b_cabin,      # end of cabin
+                c_nose   = 1.3,
+                c_rear   = 1.2,
+                d_nose   = -0.379, 			#22deg 
+                d_rear   = 0.636, 			#14deg
+                position = [0.0, 0.0, 0.0]
+            )
+    end
+
+# ╔═╡ 343af23b-4c4d-422b-81d2-4bc4e5407dac
+md"""### Fuselage"""
 
 # ╔═╡ 26d5c124-3da7-4a5a-b06e-38627b2dd8ac
 begin
@@ -110,38 +121,45 @@ md"""
 # ╔═╡ 74330174-edfd-4e13-8bc1-f8c80c163be0
 md"### Wing"
 
-# ╔═╡ 1bf4c10a-1801-41be-b06f-677f44a156a7
-# begin
-# 	# AIRFOIL PROFILES
-# 	foil_w_r = read_foil(download("http://airfoiltools.com/airfoil/seligdatfile?airfoil=b737a-il")) # Root
-# 	foil_w_m = read_foil(download("http://airfoiltools.com/airfoil/seligdatfile?airfoil=b737b-il")) # Midspan
-# 	foil_w_t = read_foil(download("http://airfoiltools.com/airfoil/seligdatfile?airfoil=b737c-il")) # Tip
-# end
-
 # ╔═╡ 751bf100-1de9-48b0-aeed-c31e3a590521
 begin
 	# AIRFOIL PROFILES
-	foil_w_r = read_foil(download("http://airfoiltools.com/airfoil/seligdatfile?airfoil=b737a-il")) # Root
-	foil_w_m = read_foil(download("http://airfoiltools.com/airfoil/seligdatfile?airfoil=b737b-il")) # Midspan
-	foil_w_t = read_foil(download("http://airfoiltools.com/airfoil/seligdatfile?airfoil=b737c-il")) # Tip
+	foil_w_r = read_foil("C:\\Users\\kychandv\\MECH3620\\3620_project\\Airfoil\\NASA SC(2)-0714.txt") # Root
+	foil_w_m = read_foil("C:\\Users\\kychandv\\MECH3620\\3620_project\\Airfoil\\NASA SC(2)-0714.txt") # Midspan
+	foil_w_t = read_foil("C:\\Users\\kychandv\\MECH3620\\3620_project\\Airfoil\\NASA SC(2)-0714.txt") # Tip
 end
+
+# ╔═╡ c1e149da-a714-4eaa-ab9f-e07430fdc6dc
+plot(foil_w_r, aspect_ratio = 1)
 
 # ╔═╡ 7758fb66-991d-49f7-b8f8-a3549fb0e340
 # Wing
 wing = Wing(
     foils       = [foil_w_r, foil_w_m, foil_w_t], # Airfoils (root to tip)
-    chords      = [14.0, 9.73, 1.43561],        # Chord lengths
-    spans       = [14.0, 46.9] / 2,             # Span lengths
-    dihedrals   = fill(6, 2),                   # Dihedral angles (deg)
-    sweeps      = fill(35.6, 2),                # Sweep angles (deg)
+    chords      = [4.787, 3.540, 1.565],        # Chord lengths
+    spans       = [4.937, 7.813],             # Span lengths
+    dihedrals   = [5.0, 7.0],                   # Dihedral angles (deg)
+    sweeps      = [30.0, 30.0],                # Sweep angles (deg)
     w_sweep     = 0.,                           # Leading-edge sweep
     symmetry    = true,                         # Symmetry
 
 	# Orientation
-    angle       = 3,       # Incidence angle (deg)
+    angle       = 5,       # Incidence angle (deg)
     axis        = [0, 1, 0], # Axis of rotation, x-axis
-    position    = [0.35fuse.length, 0., -2.5]
+    position    = [10, 0.0, -1.0]
 )
+
+# ╔═╡ 86c27fa3-5112-4790-bb17-9abafd26da5e
+begin
+	mac25_w = mean_aerodynamic_center(wing, 0.25)
+	mac25_w.x 	# x-coordinate of mean aerodynamic center at 25%
+	mac25_w.y 	# y-coordinate of mean aerodynamic center at 25%
+	mac40_w = mean_aerodynamic_center(wing, 0.40) # at 40% of the chord length
+	mac40_w.x 	# x-coordinate of mean aerodynamic center at 40%
+end
+
+# ╔═╡ 2f84a323-80b4-4565-9526-24979bd39afb
+    fuse_end_x = fuse.affine.translation.x + fuse.length # x-coordinate of fuselage
 
 # ╔═╡ d61de21f-5d28-4bd9-8b41-0d0be92f9e76
 b_w = span(wing) # Span length, m
@@ -202,21 +220,21 @@ con_foil = control_surface(naca4(0,0,1,2), hinge = 0.75, angle = -10.)
 
 # ╔═╡ fbeb3c61-6c88-4aa5-9925-3510a00e366e
 htail = WingSection(
-    area        = 101,  			# Area (m²). HOW DO YOU DETERMINE THIS?
-    aspect      = 6.2,  			# Aspect ratio
-    taper       = 0.4,  			# Taper ratio
-    dihedral    = 7.,   			# Dihedral angle (deg)
-    sweep       = 35.,  			# Sweep angle (deg)
-    w_sweep     = 0.,   			# Leading-edge sweep
-    root_foil   = con_foil, 	# Root airfoil
-	tip_foil    = con_foil, 	# Tip airfoil
-    symmetry    = true,
-
-    # Orientation
-    angle       = 5,  # Incidence angle (deg). HOW DO YOU DETERMINE THIS?
-    axis        = [0., 1., 0.], # Axis of rotation, y-axis
-    position    = fuse_end - [ 10., 0., 0.], # HOW DO YOU DETERMINE THIS?
-)
+            area        = 16.5,  # HOW DO YOU DETERMINE THIS?--> Area~12.5-25% S_wing
+            aspect      = 7.1,  
+            taper       = 0.25,  
+            dihedral    = 0.,   
+            sweep       = 30.,  
+            w_sweep     = 0.,   # Leading-edge sweep
+            root_foil   = con_foil, 		# Root airfoil
+            tip_foil    = con_foil, 		# Tip airfoil
+            symmetry    = true,
+            
+            ## Orientation
+            angle       = -3,           # Incidence angle (deg), HOW DO YOU DETERMINE THIS?
+            axis        = [0., 1., 0.], # Axis of rotation, y-axis
+            position    = [ fuse_end_x - 4.0, 0., 0.], # HOW DO YOU DETERMINE THIS?
+        );
 
 # ╔═╡ 7432a455-aff6-4a22-8576-9249f67b5dd7
 b_h = span(htail)
@@ -238,19 +256,18 @@ md"#### Vertical Tail"
 
 # ╔═╡ 72c1cb62-58da-40c8-a5ff-5f9325360fe8
 vtail = WingSection(
-    area        = 56.1, 			# Area (m²). # HOW DO YOU DETERMINE THIS?
-    aspect      = 1.5,  			# Aspect ratio
-    taper       = 0.4,  			# Taper ratio
-    sweep       = 44.4, 			# Sweep angle (deg)
-    w_sweep     = 0.,   			# Leading-edge sweep
-    root_foil   = naca4(0,0,0,9), 	# Root airfoil
-	tip_foil    = naca4(0,0,0,9), 	# Tip airfoil
-
-    # Orientation
-    angle       = 90.,       # To make it vertical
-    axis        = [1, 0, 0], # Axis of rotation, x-axis
-    position    = htail.affine.translation - [2.,0.,-1.] # HOW DO YOU DETERMINE THIS?
-) # Not a symmetric surface
+            area        = 6.183, # HOW DO YOU DETERMINE THIS?
+            aspect      = 3.12,
+            taper       = 0.25,
+            sweep       = 30,
+            w_sweep     = 0.,   # Leading-edge sweep
+            root_foil   = naca4(0,0,1,2),
+            
+            ## Orientation
+            angle       = 90.,       # To make it vertical
+            axis        = [1, 0, 0], # Axis of rotation, x-axis
+            position    = htail.affine.translation + [0.082,0.,-0.01] # HOW DO YOU DETERMINE THIS?
+        ); # Not a symmetric surface
 
 # ╔═╡ 02dcefce-3b27-441f-a76b-9dba2c7b2b72
 b_v = span(vtail)
@@ -293,7 +310,7 @@ md"### Meshing"
 wing_mesh = WingMesh(wing, 
 	[8,16], # Number of spanwise panels
 	10,     # Number of chordwise panels
-    span_spacing = Uniform() # Spacing: Uniform() or Cosine()
+    span_spacing = fill(Uniform(),4) # Spacing: Uniform() or Cosine()
 )
 
 # ╔═╡ bfdc099a-bdac-4b8f-8ef8-a1c2003c6d43
@@ -324,26 +341,7 @@ fs = Freestream(
 ) 
 
 # ╔═╡ c429a2d2-69b9-437d-a138-efee4b118016
-M = 0.84 # Operating Mach number.
-
-# ╔═╡ 36b197b3-1971-4c73-96ec-7370002ade1e
-# ╠═╡ disabled = true
-#=╠═╡
-# Define reference values
-refs = References(
-	density = 0.35, # Density at cruise altitude.
-					# HOW DO YOU CALCULATE THIS BASED ON THE ALTITUDE?
-	
-	speed = M * 330., # HOW DO YOU DETERMINE THE SPEED?
-
-	# Set reference quantities to wing dimensions.
-	area = projected_area(wing), 			# Area, m²
-	chord = mean_aerodynamic_chord(wing),   # Chord, m
-	span = span(wing), 						# Span, m
-	
-	location = fuse.affine.translation, # From the nose as reference (origin)
-)
-  ╠═╡ =#
+M = 0.78# Operating Mach number.
 
 # ╔═╡ dfd216a0-817c-43b2-bb0a-e2f5bb28650d
 md"""### Aerodynamic Coefficients
@@ -413,11 +411,11 @@ begin
 	# THIS HAS BEEN DONE BASED ON PRELIMINARY ESTIMATION. 
 	# YOU MUST REVISE IT BASED ON STATISTICAL WEIGHTS.
 
-	TOGW 	= 347458 * g # Takeoff gross weight, N
+	TOGW 	= 33614.1  * g # Takeoff gross weight, N
 	W_other = 0.17 * TOGW # All other components
 
 	# Engine
-	W_engine 	 = 8762 * g # GE90-110B1 engine weight (single), N
+	W_engine 	 = 1179 * g # GE90-110B1 engine weight (single), N
 	W_engine_fac = 1.3 * W_engine # Scaling factor for engine weight
 
 	# Lifting surfaces (HINT: REPLACE WITH STATISTICAL WEIGHTS)
@@ -432,6 +430,13 @@ begin
 
 	# THERE ARE MORE COMPONENT WEIGHTS YOU NEED TO ACCOUNT FOR!!!
 	# HINT: PASSENGERS??? LUGGAGE??? FUEL???
+	fuel_fraction = 0.28658
+    W_payload = 7350.0 * g
+    W_crew = 360.0 * g
+    W_fuel = fuel_fraction * TOGW * g
+	TOGW_lb = TOGW * kg_to_lb
+    n_limit_pos = min(2.1 + 24000.0 / (TOGW_lb + 10000.0), 3.8)
+    n_ult = 1.5 * n_limit_pos
 end
 
 # ╔═╡ 5838b73b-a044-4f63-b3b8-88c5b96e0f83
@@ -462,7 +467,7 @@ begin
 	r_fuse 	= r_nose + [fuse.length / 2, 0., 0.]
 
 	# All-other component centroid (40% L_f)
-	r_other = r_nose + [0.4 * fuse.length, 0., 0.]
+	r_other = r_nose + [0.5 * fuse.length, 0., 0.]
 
 	# Nose landing gear centroid (15% L_f)
 	r_nLG  	= r_nose + [0.15 * fuse.length, 0., -fuse.radius]
@@ -617,16 +622,6 @@ end
 # ╔═╡ 072e8834-0a19-456a-b818-f436a847490b
 # savefig(plt_vlm, "my_aircraft.png") # TO SAVE THE FIGURE
 
-# ╔═╡ 0859eeeb-0dbf-4f39-a7a4-a5f828726b16
-md"### Dynamic Stability"
-
-# ╔═╡ 50751fc6-5704-4487-ba2f-9f37c21fbdfc
-begin
-	Ixx = span(wing) / √12 
-	Iyy = chords(wing)[1] / √12 # Moment of inertia in x-z plane
-	Izz = span(wing) / √12
-end
-
 # ╔═╡ 90ac16c3-37d4-42ae-a9ed-4572c49397dc
 md"## Drag Estimation"
 
@@ -716,12 +711,12 @@ toggles
 
 # ╔═╡ f7d454c6-43a6-4818-b20a-6950323f6365
 refs = References(
-	speed    = 150.0, 							# Reference speed, m/s
+	speed    = M * 295, 							# Reference speed, m/s
 	density  = 1.225, 							# Reference density, kg/m³
 	area     = projected_area(wing), 			# Reference area, m²
 	span     = span(wing), 						# Reference span, m
 	chord    = mean_aerodynamic_chord(wing), 	# Reference chord, m
-	location = mean_aerodynamic_center(wing) 	# Moment reference point, m
+	location = [0.,0.,0.], # From the nose as reference (origin)
  )
 
 # ╔═╡ e358c252-4592-4ae6-bd90-bf237dc3ee1d
@@ -861,18 +856,6 @@ plt_vlm
 
 # ╔═╡ f43d6358-5f1f-40e9-896f-37038ad04986
 plt_vlm
-
-# ╔═╡ 7a96bdd1-65b5-48cf-8ebc-36f0ba216965
-lon_dvs = longitudinal_stability_derivatives(ac_dvs, refs.speed, W_tot, Iyy, dynamic_pressure(refs), refs.area, refs.chord)
-
-# ╔═╡ 31cdcfd6-70b1-4bef-aecd-78c5d359540c
-A_lon = longitudinal_stability_matrix(lon_dvs..., refs.speed, g)
-
-# ╔═╡ 38185599-aa95-4716-9b2e-1af3b2548396
-lat_dvs = lateral_stability_derivatives(ac_dvs, refs.speed, W_tot, Ixx, Izz, dynamic_pressure(refs), refs.area, refs.span)
-
-# ╔═╡ da3ec2a7-109b-4f8e-bd5e-521e257b8693
-A_lat = lateral_stability_matrix(lat_dvs..., refs.speed, g)
 
 # ╔═╡ de956d60-60b6-47cf-baa6-0cc65ac45877
 CD0_fuse = parasitic_drag_coefficient(fuse, refs, x_tr) # Fuselage
@@ -2690,8 +2673,8 @@ version = "1.13.0+0"
 # ╠═47df8df1-3923-44a1-a19e-845246737b1e
 # ╟─f5aadd23-1d7b-4c3b-be6e-111e431357e1
 # ╟─f6a0b7bc-4722-49d9-98c8-37822febca88
-# ╟─343af23b-4c4d-422b-81d2-4bc4e5407dac
 # ╠═2ef0a234-499b-4e23-b7d7-c3fcadd14752
+# ╟─343af23b-4c4d-422b-81d2-4bc4e5407dac
 # ╠═6075b162-6315-4bd8-bdff-007f3a278b66
 # ╠═c44ee57c-0cba-4436-9557-b0c7eaf77c62
 # ╠═26d5c124-3da7-4a5a-b06e-38627b2dd8ac
@@ -2701,12 +2684,14 @@ version = "1.13.0+0"
 # ╠═635f6baa-e360-45b2-87de-fedf1ec52b4a
 # ╟─65661116-c2a5-4684-aa1d-8514e6310025
 # ╟─74330174-edfd-4e13-8bc1-f8c80c163be0
-# ╠═1bf4c10a-1801-41be-b06f-677f44a156a7
 # ╠═751bf100-1de9-48b0-aeed-c31e3a590521
+# ╠═c1e149da-a714-4eaa-ab9f-e07430fdc6dc
 # ╠═0418bc57-5b5f-4348-95a9-25bb5bce2af4
 # ╠═312a08dc-7316-44e3-b026-b6ecd95e1abd
 # ╠═6ddf1d64-3880-41db-a31e-40527de5eb16
 # ╠═7758fb66-991d-49f7-b8f8-a3549fb0e340
+# ╠═86c27fa3-5112-4790-bb17-9abafd26da5e
+# ╠═2f84a323-80b4-4565-9526-24979bd39afb
 # ╠═183abad4-ad8d-41b8-a0fc-b1217f728b9e
 # ╠═a2f75346-2a05-4570-ab7d-54c0cf3bcf89
 # ╠═d61de21f-5d28-4bd9-8b41-0d0be92f9e76
@@ -2753,7 +2738,6 @@ version = "1.13.0+0"
 # ╠═b672ad66-01a4-48b3-a169-02d97d4b9baa
 # ╠═5b611e79-5689-4a33-929e-5c77dee7f958
 # ╠═c429a2d2-69b9-437d-a138-efee4b118016
-# ╠═36b197b3-1971-4c73-96ec-7370002ade1e
 # ╠═e358c252-4592-4ae6-bd90-bf237dc3ee1d
 # ╟─dfd216a0-817c-43b2-bb0a-e2f5bb28650d
 # ╟─c736beb7-6714-4931-9e35-e452a9647682
@@ -2809,12 +2793,6 @@ version = "1.13.0+0"
 # ╠═06427107-e04a-44d0-9db1-76a9c7519895
 # ╠═f43d6358-5f1f-40e9-896f-37038ad04986
 # ╠═072e8834-0a19-456a-b818-f436a847490b
-# ╟─0859eeeb-0dbf-4f39-a7a4-a5f828726b16
-# ╠═50751fc6-5704-4487-ba2f-9f37c21fbdfc
-# ╠═7a96bdd1-65b5-48cf-8ebc-36f0ba216965
-# ╠═31cdcfd6-70b1-4bef-aecd-78c5d359540c
-# ╠═38185599-aa95-4716-9b2e-1af3b2548396
-# ╠═da3ec2a7-109b-4f8e-bd5e-521e257b8693
 # ╟─90ac16c3-37d4-42ae-a9ed-4572c49397dc
 # ╟─27c05748-4570-4420-af08-15fd2a31a373
 # ╟─05fd1ff1-b47d-4452-b0c0-b4a39a5b3d7e
