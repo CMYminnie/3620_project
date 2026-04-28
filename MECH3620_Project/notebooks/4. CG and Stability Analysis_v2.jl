@@ -1,5 +1,5 @@
-    ### A Pluto.jl notebook ###
-    # v0.20.24
+### A Pluto.jl notebook ###
+# v0.20.24
 
     using Markdown
     using InteractiveUtils
@@ -56,8 +56,8 @@
 
     # ╔═╡ d9ef5002-70d7-40a8-81fa-7a07567eb613
     begin
-    foil_w_root = read_foil("Airfoil\\NASA_SC(2)_0714.txt") # Read the root airfoil
-    foil_w_tip  = read_foil("Airfoil\\NASA_SC(2)_0714.txt") # Read the tip airfoil
+    foil_w_root = read_foil("Airfoil\\NASA SC(2)-0714.txt") # Read the root airfoil
+    foil_w_tip  = read_foil("Airfoil\\NASA SC(2)-0714.txt")#Read the tip airfoil
     end
 
     # ╔═╡ a76599c7-563d-4647-8fda-36869d07ff71
@@ -217,8 +217,6 @@
     # ╔═╡ 8026eb26-010f-487b-bd6d-e82939d09d54
     md"## Stabilizer Design"
 
-    # ╔═╡ 1c8e5a9b-7c0d-4f2e-9a3b-1c8e5a9b7c0d
-    con_foil = control_surface(naca4(0,0,0,9), hinge = 0.91, angle = 0)
     # ╔═╡ 28739577-e9fd-48f2-8f55-a036b560931d
     md"### Horizontal Tail"
 
@@ -576,7 +574,7 @@ end;
     # Example
     begin
         eta = 0.97 # Aerodynamic efficiency factor (for DATCOM formula)
-        M = 0.84 # operating cruise Mach number
+        M = 0.78 # operating cruise Mach number
         CL_α_w = lift_slope_DATCOM(AR_w, eta, lambda_w, M)
     end
 
@@ -1590,6 +1588,85 @@ annotate!(potato_plot, boarding_cg.CG_percent_MAC[full_load_idx], boarding_cg.We
 annotate!(potato_plot, boarding_cg.CG_percent_MAC[end], boarding_cg.Weight_kg[end], text("Unload complete", 8, :left))
 
 # ------------------------------------------------------------
+# Potato plot: points-only version
+# Shows each calculated loading/unloading state as a point
+# ------------------------------------------------------------
+
+# Short labels for each point: A, B, C, ...
+point_labels = [string(Char('A' + i - 1)) for i in 1:nrow(boarding_cg)]
+
+potato_points_label_table = DataFrame(
+    Label = point_labels,
+    Step_No = boarding_cg.Step_No,
+    Step = boarding_cg.Step,
+    Weight_kg = boarding_cg.Weight_kg,
+    CG_percent_MAC = boarding_cg.CG_percent_MAC,
+    SM_DATCOM_percent = boarding_cg.SM_DATCOM_percent,
+    SM_VLM_percent = boarding_cg.SM_VLM_percent
+)
+
+# Split loading and unloading points
+first_unload_idx_points = findfirst(s -> startswith(s, "Unload"), boarding_cg.Step)
+full_load_idx_points = first_unload_idx_points - 1
+
+loading_point_rows = 1:full_load_idx_points
+unloading_point_rows = first_unload_idx_points:nrow(boarding_cg)
+
+potato_points_plot = plot(
+    xlabel = "CG location (%MAC)",
+    ylabel = "Aircraft weight (kg)",
+    title = "Boarding Potato Plot — Points Only",
+    legend = :topright,
+    grid = true
+)
+
+# Loading points only
+scatter!(
+    potato_points_plot,
+    boarding_cg.CG_percent_MAC[loading_point_rows],
+    boarding_cg.Weight_kg[loading_point_rows],
+    markersize = 6,
+    label = "Loading points"
+)
+
+# Unloading points only
+scatter!(
+    potato_points_plot,
+    boarding_cg.CG_percent_MAC[unloading_point_rows],
+    boarding_cg.Weight_kg[unloading_point_rows],
+    markersize = 6,
+    marker = :diamond,
+    label = "Unloading points"
+)
+
+# Forward/aft CG reference limits
+vline!(
+    potato_points_plot,
+    [fwd_cg_limit_pct],
+    linestyle = :dot,
+    linewidth = 2,
+    label = "Forward CG ref. limit"
+)
+
+vline!(
+    potato_points_plot,
+    [aft_cg_limit_pct],
+    linestyle = :dot,
+    linewidth = 2,
+    label = "Aft CG ref. limit"
+)
+
+# Label each point with A, B, C, ...
+for i in 1:nrow(boarding_cg)
+    annotate!(
+        potato_points_plot,
+        boarding_cg.CG_percent_MAC[i],
+        boarding_cg.Weight_kg[i],
+        text(point_labels[i], 8, :left)
+    )
+end
+
+# ------------------------------------------------------------
 # Static margin during loading cases
 # ------------------------------------------------------------
 sm_loading_plot = plot(
@@ -1962,6 +2039,7 @@ full_takeoff_cg = cg_export(full_takeoff_items)
         CSV.write(joinpath(outdir, "summary_group_weight_statement.csv"), summary_group_weight_statement)
         CSV.write(joinpath(outdir, "summary_group_totals.csv"), summary_group_totals)
         CSV.write(joinpath(outdir, "cg_reference_check.csv"), cg_reference_check)
+        CSV.write(joinpath(outdir, "potato_points_label_table.csv"), potato_points_label_table)
 
         open(joinpath(outdir, "aero_derivatives_summary.txt"), "w") do dio
             println(dio, "AERODYNAMIC AND STABILITY DERIVATIVES SUMMARY")
@@ -1980,6 +2058,7 @@ full_takeoff_cg = cg_export(full_takeoff_items)
         savefig(sm_mission_plot, joinpath(outdir, "static_margin_mission.png"))
         savefig(cg_excursion_plot, joinpath(outdir, "cg_excursion_envelope_plot.png"))
         savefig(weight_balance_plot, joinpath(outdir, "weight_balance_component_locations.png"))
+        savefig(potato_points_plot, joinpath(outdir, "boarding_potato_points_only.png"))
 
         open(joinpath(outdir, "summary.txt"), "w") do io
 
@@ -2066,6 +2145,9 @@ full_takeoff_cg = cg_export(full_takeoff_items)
 
     subsection("Aerodynamic and Stability Derivatives")
     print_table(aero_derivatives_summary)
+
+    subsection("Boarding Potato Points Label Table")
+    print_table(potato_points_label_table)
 end
 
         zipname = outdir * ".zip"
