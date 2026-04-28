@@ -1,0 +1,3 @@
+Limit,Source,Critical_case,Weight_kg,x_cg_m,CG_percent_MAC,SM_DATCOM_percent,SM_VLM_percent
+Forward CG limit from cases,Loading scenarios,Crew-Fuel-Payload - Add Crew,16630.971221999996,14.040717667078342,11.260197066884563,21.570461429413033,21.519482049399738
+Aft CG limit from cases,Loading scenarios,Fuel-Payload-Crew - Add Payload,33254.1,14.613695009956293,27.87454247744778,4.956116018849812,4.905136638836518

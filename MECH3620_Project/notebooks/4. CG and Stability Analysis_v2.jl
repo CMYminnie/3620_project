@@ -69,8 +69,8 @@
     # ╔═╡ c8c3daf0-4e63-49b6-bc07-6ba37f817c5e
     wing = Wing(
         foils       = [foil_w_root, foil_w_root, foil_w_tip],              # Airfoils
-        chords 		= [5.1655749037, 3.427880928, 1.690012819],  	# Chord lengths 
-        spans       = [5.0, 7.915],             # Span lengths
+        chords 		= [4.787, 3.540, 1.565],  	# Chord lengths 
+        spans       = [4.937, 7.813],
         dihedrals   = [5.0, 7.0],               # Dihedral angles (deg)
         sweeps      = [30.0, 30.0],             # Sweep angles (deg )
         w_sweep     = 0.0,                      # Leading-edge sweep
