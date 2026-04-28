@@ -423,7 +423,7 @@ end;
     md"""The weight and CG position of each component can hence be computed and included in a dictionary for convenience in calculations."""
 
     # ╔═╡ 9e9f2802-c8ee-4df4-b643-ee3a271e2986
-    weight_position = Dict(	
+    weight_position_raw = Dict(	
         "engine" 	=> (1.3 * 2 * W_engine, 			eng_L.x), 	# Engines (2 × weight)
         "wing"   	=> (S_w * 10  * lb_ft2_to_kg_m2, 	mac40_w.x), # Wing, 40% MAC
         "htail"  	=> (S_h * 5.5 * lb_ft2_to_kg_m2, 	mac40_h.x), # HTail, 40% MAC
@@ -451,10 +451,10 @@ end;
     # Keep engine fixed because it comes from selected engine data
     fixed_components = ["engine"]
 
-    W_fixed = sum(weight_position[name][1] for name in fixed_components)
+    W_fixed = sum(weight_position_raw[name][1] for name in fixed_components)
 
     W_scalable_current = sum(
-        w for (name, (w, x)) in weight_position
+        w for (name, (w, x)) in weight_position_raw
         if !(name in fixed_components)
     )
 
