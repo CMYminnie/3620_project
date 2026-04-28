@@ -67,18 +67,7 @@
     md"""Here, we'll define a two-section wing planform that we'll use in this notebook."""
 
     # ╔═╡ c8c3daf0-4e63-49b6-bc07-6ba37f817c5e
-    wing = Wing(
-        foils       = [foil_w_root, foil_w_root, foil_w_tip],              # Airfoils
-        chords 		= [4.787, 3.540, 1.565],  	# Chord lengths 
-        spans       = [4.937, 7.813],
-        dihedrals   = [5.0, 7.0],               # Dihedral angles (deg)
-        sweeps      = [30.0, 30.0],             # Sweep angles (deg )
-        w_sweep     = 0.0,                      # Leading-edge sweep
-        position    = [10, 0.0, -1.0],      	 # HOW DO YOU DETERMINE THIS?
-        symmetry    = true,                      # Symmetry
-        angle       = 5,
-        axis        = [0, 1, 0]
-    )
+
 
     # ╔═╡ 678f44cb-e7fa-403d-bb45-7ece4195b88b
     md"""
@@ -151,10 +140,10 @@
     # ╔═╡ b849f0aa-6391-4945-8ef3-70907a9ff1ec
     begin
             df_outer = 3.21
-            l_fuse   = 28.83
-            l_nose   = 4.94
-            l_tail   = 4.80
-            l_cabin  = 18.62
+            l_fuse   = 32.98
+            l_nose   = 4.91 
+            l_tail   = 8.99 # nose / diameter ratio = 2.8
+            l_cabin  = 19.08
 
             x_a_cabin = l_nose / l_fuse
             x_b_cabin = (l_nose + l_cabin) / l_fuse
@@ -166,8 +155,8 @@
                 x_b      = x_b_cabin,      # end of cabin
                 c_nose   = 1.3,
                 c_rear   = 1.2,
-                d_nose   = -0.09,
-                d_rear   = -0.37,
+                d_nose   = -0.379, 			#22deg 
+                d_rear   = 0.636, 			#14deg
                 position = [0.0, 0.0, 0.0]
             )
         end
@@ -753,7 +742,7 @@ end;
 
     # ╔═╡ 41a1dda8-275e-4090-bcd8-5670b4d005a7
     refs = References(
-        speed = M * 330.,
+        speed = M * 295.,
         density = 1.225,
         area = projected_area(wing),
         chord = mean_aerodynamic_chord(wing),
@@ -1241,43 +1230,42 @@ loading_scenarios = vcat(
 # ------------------------------------------------------------
 # Mission CG excursion due to fuel burn
 # TWO-WAY MISSION WITHOUT REFUELING
+# Beta is calculated by cumulative multiplication of stage fractions
 # ------------------------------------------------------------
-one_leg_beta_profile = [
-    ("Start of leg",       1.0000000000),
-    ("After warm-up",      0.9900000000),
-    ("After taxi",         0.9801000000),
-    ("After takeoff",      0.9751995000),
-    ("After climb",        0.9556955100),
-    ("After cruise",       0.8904030708),
-    ("After loiter",       0.8697770000),
-    ("After descent",      0.8610790000),
-    ("After landing",      0.8541905038)
+
+stage_fractions = [
+    ("Warm-up", 0.99),
+    ("Taxi",    0.99),
+    ("Takeoff", 0.995),
+    ("Climb",   0.98),
+    ("Cruise",  0.9316807095272559),
+    ("Loiter",  0.976835024950062),
+    ("Descent", 0.99),
+    ("Landing", 0.992)
 ]
 
-one_leg_final_beta = one_leg_beta_profile[end][2]
-one_leg_burn = 1.0 - one_leg_final_beta
+mission_beta = Tuple{String, Float64}[]
 
-landing_fuel_remaining_fraction = 0.06
+let beta = 1.0
+    push!(mission_beta, ("Outbound - Start of leg", beta))
 
-function one_leg_progress(beta)
-    return (1.0 - beta) / one_leg_burn
-end
+    for leg in 1:2
+        leg_name = leg == 1 ? "Outbound" : "Return"
 
-mission_defs = Tuple{String, Float64}[]
+        if leg == 2
+            push!(mission_beta, ("Return - Start of leg", beta))
+        end
 
-for (phase, beta_leg) in one_leg_beta_profile
-    push!(mission_defs, ("Outbound - " * phase, 0.5 * one_leg_progress(beta_leg)))
-end
-
-for (phase, beta_leg) in one_leg_beta_profile[2:end]
-    push!(mission_defs, ("Return - " * phase, 0.5 + 0.5 * one_leg_progress(beta_leg)))
+        for (phase, frac) in stage_fractions
+            beta = beta * frac
+            push!(mission_beta, ("$(leg_name) - After $(phase)", beta))
+        end
+    end
 end
 
 mission_cg = DataFrame(
     Phase = String[],
-    Mission_progress = Float64[],
     Beta = Float64[],
-    Fuel_remaining_fraction = Float64[],
     Fuel_mass_kg = Float64[],
     Weight_kg = Float64[],
     x_cg_m = Float64[],
@@ -1286,29 +1274,32 @@ mission_cg = DataFrame(
     SM_VLM_percent = Float64[]
 )
 
-for (phase, progress) in mission_defs
+for (phase, beta_phase) in mission_beta
     items = copy(weight_position)
 
+    # Full useful load remains onboard during mission
     items["crew"] = (W_crew_export, x_crew_export)
     items["baggage"] = (W_baggage_export, x_baggage_export)
     add_items!(items, passenger_items_dict())
 
-    fuel_remaining_fraction =
-        landing_fuel_remaining_fraction +
-        (1.0 - progress) * (1.0 - landing_fuel_remaining_fraction)
+    # Total aircraft weight from beta
+    W_phase = beta_phase * TOGW
 
-    fuel_remaining_fraction = clamp(fuel_remaining_fraction, 0.0, 1.0)
-    fuel_mass = W_fuel_export * fuel_remaining_fraction
+    # Fuel mass is whatever is needed to make total weight = beta * TOGW
+    fuel_mass = W_phase - W_zero_fuel
+
+    if fuel_mass < -1e-6
+        @warn "Mission beta gives aircraft weight below zero-fuel weight. Check stage fractions." phase beta_phase W_phase W_zero_fuel
+        fuel_mass = 0.0
+    end
+
     items["fuel"] = (fuel_mass, x_fuel_export)
 
     cg = cg_export(items)
-    beta_actual = cg.W / TOGW
 
     push!(mission_cg, (
         phase,
-        progress,
-        beta_actual,
-        fuel_remaining_fraction,
+        beta_phase,
         fuel_mass,
         cg.W,
         cg.xcg,
@@ -1318,6 +1309,7 @@ for (phase, progress) in mission_defs
     ))
 end
 
+mission_cg[!, :Mission_progress] = collect(range(0.0, 1.0, length=nrow(mission_cg)))
 # ------------------------------------------------------------
 # Good boarding method potato plot
 # Use a balanced-zone boarding order, plus unloading
@@ -2163,7 +2155,7 @@ end
         println("Export folder created: ", outdir)
         println("ZIP file created: ", zipname)
 
-        original_results, mission_cg, boarding_cg, cg_limits, mission_cg_plot, sm_plot, potato_plot
+        original_results, mission_cg, boarding_cg, cg_limits, mission_cg_plot, sm_mission_plot, sm_loading_plot, potato_plot
     end
 
 
