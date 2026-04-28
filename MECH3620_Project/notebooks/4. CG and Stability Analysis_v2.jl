@@ -22,6 +22,7 @@
         using PlutoUI
         using DataFrames
         using Plots
+        using Markdown
         gr(size = (800,600))
         TableOfContents(depth = 4)
     end
@@ -55,8 +56,8 @@
 
     # ╔═╡ d9ef5002-70d7-40a8-81fa-7a07567eb613
     begin
-    foil_w_root = read_foil("Airfoil\\NASA SC(2)-0714.txt") # Read the root airfoil
-    foil_w_tip  = read_foil("Airfoil\\NASA SC(2)-0714.txt")#Read the tip airfoil
+    foil_w_root = read_foil("Airfoil\\NASA_SC(2)_0714.txt") # Read the root airfoil
+    foil_w_tip  = read_foil("Airfoil\\NASA_SC(2)_0714.txt") # Read the tip airfoil
     end
 
     # ╔═╡ a76599c7-563d-4647-8fda-36869d07ff71
@@ -216,6 +217,8 @@
     # ╔═╡ 8026eb26-010f-487b-bd6d-e82939d09d54
     md"## Stabilizer Design"
 
+    # ╔═╡ 1c8e5a9b-7c0d-4f2e-9a3b-1c8e5a9b7c0d
+    con_foil = control_surface(naca4(0,0,0,9), hinge = 0.91, angle = 0)
     # ╔═╡ 28739577-e9fd-48f2-8f55-a036b560931d
     md"### Horizontal Tail"
 
