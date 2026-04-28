@@ -47,7 +47,7 @@
         ψ_s2 			= @bind ψ2 Slider(0:1e-2:90, default = 30)
         ϕ_s3 			= @bind ϕ3 Slider(0:1e-2:90, default = 15)
         ψ_s3 			= @bind ψ3 Slider(0:1e-2:90, default = 30)
-    end;
+    end
 
     # ╔═╡ d6b41872-bd8e-45d1-baa2-fa0cc36b6177
     md"""### Wing
@@ -67,7 +67,18 @@
     md"""Here, we'll define a two-section wing planform that we'll use in this notebook."""
 
     # ╔═╡ c8c3daf0-4e63-49b6-bc07-6ba37f817c5e
-
+    wing = Wing(
+        foils       = [foil_w_root, foil_w_root, foil_w_tip],              # Airfoils
+        chords 		= [4.787, 3.540, 1.565],  	# Chord lengths 
+        spans       = [4.937, 7.813],
+        dihedrals   = [5.0, 7.0],               # Dihedral angles (deg)
+        sweeps      = [30.0, 30.0],             # Sweep angles (deg )
+        w_sweep     = 0.0,                      # Leading-edge sweep
+        position    = [11, 0.0, -1.0],      	 # HOW DO YOU DETERMINE THIS?
+        symmetry    = true,                      # Symmetry
+        angle       = 5,
+        axis        = [0, 1, 0]
+    )
 
     # ╔═╡ 678f44cb-e7fa-403d-bb45-7ece4195b88b
     md"""
