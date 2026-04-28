@@ -1,3 +1,0 @@
-Limit,Source,Critical_case,Weight_kg,x_cg_m,CG_percent_MAC,SM_DATCOM_percent,SM_VLM_percent
-Forward CG limit from cases,Boarding potato plot,Balanced-zone boarding - Board zone 1,32624.100000000002,15.406572273728043,21.86870520508268,14.976210444902588,13.74343095174277
-Aft CG limit from cases,Loading scenarios,Fuel-Crew-Payload - Add Fuel,25904.1,16.011360152073653,39.405445245248586,-2.5605295952633167,-3.7933090884231353
