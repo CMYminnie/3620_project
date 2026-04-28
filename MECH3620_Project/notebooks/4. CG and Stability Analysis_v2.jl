@@ -278,7 +278,7 @@
 
     # ╔═╡ add41f70-5744-494f-8324-726fa5d9bb27
     vtail = WingSection(
-            area        = 6.183, # HOW DO YOU DETERMINE THIS?
+            area        = 10, # HOW DO YOU DETERMINE THIS?
             aspect      = 3.12,
             taper       = 0.25,
             sweep       = 30,
