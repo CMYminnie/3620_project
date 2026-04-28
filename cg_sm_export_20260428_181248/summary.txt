@@ -1,0 +1,273 @@
+
+CG, STATIC MARGIN, AND LOAD FACTOR SUMMARY
+================================================================================
+Empty/component CG          = 41.02 %MAC
+Empty/component DATCOM SM   = -4.17 %
+Empty/component VLM SM      = -5.41 %
+DATCOM neutral point        = 15.9231 m
+VLM neutral point           = 15.8805 m
+MAC                         = 3.4487 m
+x_LEMAC                     = 14.6524 m
+
+Ultimate Load Factor
+--------------------------------------------------------------------------------
+TOGW                        = 33614.1 kg
+TOGW                        = 74106.41 lb
+Positive limit load factor  = 2.3854
+Ultimate load factor        = 3.578
+
+Mission CG and Static Margin Ranges
+--------------------------------------------------------------------------------
+Mission CG range            = 25.99 to 29.76 %MAC
+Mission DATCOM SM range     = 7.08 to 10.85 %
+Mission VLM SM range        = 5.85 to 9.62 %
+
+Forward and Aft CG Limits
+--------------------------------------------------------------------------------
+2×8 DataFrame
+ Row │ Limit                        Source                Critical_case                      Weight_kg  x_cg_m   CG_percent_MAC  SM_DATCOM_percent  SM_VLM_percent
+     │ String                       String                String                             Float64    Float64  Float64         Float64            Float64
+─────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │ Forward CG limit from cases  Boarding potato plot  Forward boundary: front-to-aft -…    21401.0  15.0873         12.6098           24.2351          23.0024
+   2 │ Aft CG limit from cases      Boarding potato plot  Aft boundary: aft-to-front - Win…    17621.0  16.0523         40.5927           -3.74782         -4.9806
+
+
+CG Reference Check
+--------------------------------------------------------------------------------
+5×2 DataFrame
+ Row │ Quantity            Value
+     │ String              Any
+─────┼─────────────────────────────
+   1 │ Minimum CG          12.6098
+   2 │ Maximum CG          40.5927
+   3 │ Forward reference   12.0
+   4 │ Aft reference       32.0
+   5 │ Within 12–32% MAC?  false
+
+
+Full Takeoff Summary
+--------------------------------------------------------------------------------
+Full takeoff weight         = 33614.1 kg
+Full takeoff x_cg           = 15.6789 m
+Full takeoff CG             = 29.76 %MAC
+Full takeoff DATCOM SM      = 7.08 %
+Full takeoff VLM SM         = 5.85 %
+
+Weight Balance Table
+--------------------------------------------------------------------------------
+12×6 DataFrame
+ Row │ Component                Weight_kg  Weight_N  x_cg_m   Moment_kg_m    Moment_N_m
+     │ String                   Float64    Float64   Float64  Float64        Float64
+─────┼──────────────────────────────────────────────────────────────────────────────────────
+   1 │ all-else                  3989.85   39140.4   16.49    65792.7        645426.0
+   2 │ engine                    3065.4    30071.6   12.8772  39473.7        387237.0
+   3 │ fuse                      4948.55   48545.3   16.49    81601.6             8.00511e5
+   4 │ htail                      309.363   3034.86  30.9101   9562.46        93807.7
+   5 │ mainLG                     857.818   8415.2   16.49    14145.4             1.38767e5
+   6 │ noseLG                     151.38    1485.03   4.947     748.875        7346.47
+   7 │ vtail                      187.493   1839.31  31.154    5841.16        57301.8
+   8 │ wing                      2761.12   27086.6   16.0299  44260.4             4.34195e5
+   9 │ baggage_report            1050.0    10300.5   18.266   19179.3             1.88149e5
+  10 │ crew_report                360.0     3531.6    2.7005    972.18         9537.09
+  11 │ fuel_full_report          9633.13   94501.0   16.0299      1.54418e5       1.51484e6
+  12 │ passengers_total_report   6300.0    61803.0   14.45    91035.0             8.93053e5
+
+
+Summary Group Totals
+--------------------------------------------------------------------------------
+4×7 DataFrame
+ Row │ Group        Weight_kg  Moment_kg_m    Weight_lb  Moment_ft_lb  Loc_m    Loc_ft
+     │ String       Float64    Float64        Float64    Float64       Float64  Float64
+─────┼──────────────────────────────────────────────────────────────────────────────────
+   1 │ Structures     9215.72      1.5616e5    20317.2      1.12951e6  16.9449  55.5937
+   2 │ Propulsion     3065.4   39473.7          6758.05     2.85514e5  12.8772  42.248
+   3 │ Equipment      3989.85  65792.7          8796.12     4.75879e5  16.49    54.101
+   4 │ Useful load   17343.1       2.65605e5   38235.1      1.92112e6  15.3147  50.245
+
+
+Summary Group Weight Statement
+--------------------------------------------------------------------------------
+12×9 DataFrame
+ Row │ Group        Component          Weight_kg  Loc_m    Moment_kg_m    Weight_lb  Loc_ft     Moment_ft_lb    Notes
+     │ String       String             Float64    Float64  Float64        Float64    Float64    Float64         String
+─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │ Structures   wing                2761.12   16.0299  44260.4         6087.22    52.5915        3.20136e5  Raymer quick-and-dirty / geometr…
+   2 │ Structures   htail                309.363  30.9101   9562.46         682.03   101.411     69165.4        Raymer quick-and-dirty / geometr…
+   3 │ Structures   vtail                187.493  31.154    5841.16         413.351  102.211     42249.2        Raymer quick-and-dirty / geometr…
+   4 │ Structures   fuse                4948.55   16.49    81601.6        10909.7     54.101         5.90225e5  Raymer quick-and-dirty / geometr…
+   5 │ Structures   noseLG               151.38    4.947     748.875        333.735   16.2303     5416.62       Raymer quick-and-dirty / geometr…
+   6 │ Structures   mainLG               857.818  16.49    14145.4         1891.17    54.101    102314.0        Raymer quick-and-dirty / geometr…
+   7 │ Propulsion   installed engines   3065.4    12.8772  39473.7         6758.05    42.248         2.85514e5  1.3 × dry engine weight × 2
+   8 │ Equipment    all-else empty      3989.85   16.49    65792.7         8796.12    54.101         4.75879e5  Raymer quick-and-dirty allowance
+   9 │ Useful load  crew                 360.0     2.7005    972.18         793.664    8.85991    7031.79       4 crew assumed
+  10 │ Useful load  fuel usable         9633.13   16.0299      1.54418e5  21237.4     52.5915        1.11691e6  fuel mass from TOGW minus zero-f…
+  11 │ Useful load  passengers          6300.0    14.45    91035.0        13889.1     47.4081        6.58457e5  70 pax × 90 kg
+  12 │ Useful load  baggage             1050.0    18.266   19179.3         2314.85    59.9278        1.38724e5  70 pax × 15 kg
+
+
+Representative Loading Cases
+--------------------------------------------------------------------------------
+4×8 DataFrame
+ Row │ Sequence                           Step_No  Step                    Weight_kg  x_cg_m   CG_percent_MAC  SM_DATCOM_percent  SM_VLM_percent
+     │ String                             Int64    String                  Float64    Float64  Float64         Float64            Float64
+─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │ Approved loading: Crew → Passeng…        0  Start: OEW + crew         16631.0  15.7777         32.63              4.21489         2.98211
+   2 │ Approved loading: Crew → Passeng…        1  Board passengers          22931.0  15.4129         22.053            14.7919         13.5591
+   3 │ Approved loading: Crew → Passeng…        2  Load baggage/cargo        23981.0  15.5378         25.6753           11.1696          9.93685
+   4 │ Approved loading: Crew → Passeng…        3  Fuel uplift / dispatch    33614.1  15.6789         29.7641            7.08081         5.84803
+
+
+All Loading Scenarios
+--------------------------------------------------------------------------------
+24×8 DataFrame
+ Row │ Sequence           Step_No  Step          Weight_kg  x_cg_m   CG_percent_MAC  SM_DATCOM_percent  SM_VLM_percent
+     │ String             Int64    String        Float64    Float64  Float64         Float64            Float64
+─────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │ Crew-Fuel-Payload        0  Empty weight    16271.0  16.067          41.0198           -4.17487        -5.40765
+   2 │ Crew-Fuel-Payload        1  Add Crew        16631.0  15.7777         32.63              4.21489         2.98211
+   3 │ Crew-Fuel-Payload        2  Add Fuel        26264.1  15.8702         35.3122            1.53267         0.29989
+   4 │ Crew-Fuel-Payload        3  Add Payload     33614.1  15.6789         29.7641            7.08081         5.84803
+   5 │ Crew-Payload-Fuel        0  Empty weight    16271.0  16.067          41.0198           -4.17487        -5.40765
+   6 │ Crew-Payload-Fuel        1  Add Crew        16631.0  15.7777         32.63              4.21489         2.98211
+   7 │ Crew-Payload-Fuel        2  Add Payload     23981.0  15.5378         25.6753           11.1696          9.93685
+   8 │ Crew-Payload-Fuel        3  Add Fuel        33614.1  15.6789         29.7641            7.08081         5.84803
+   9 │ Fuel-Crew-Payload        0  Empty weight    16271.0  16.067          41.0198           -4.17487        -5.40765
+  10 │ Fuel-Crew-Payload        1  Add Fuel        25904.1  16.0532         40.6193           -3.77441        -5.00719
+  11 │ Fuel-Crew-Payload        2  Add Crew        26264.1  15.8702         35.3122            1.53267         0.29989
+  12 │ Fuel-Crew-Payload        3  Add Payload     33614.1  15.6789         29.7641            7.08081         5.84803
+  13 │ Fuel-Payload-Crew        0  Empty weight    16271.0  16.067          41.0198           -4.17487        -5.40765
+  14 │ Fuel-Payload-Crew        1  Add Fuel        25904.1  16.0532         40.6193           -3.77441        -5.00719
+  15 │ Fuel-Payload-Crew        2  Add Payload     33254.1  15.8194         33.8381            3.00679         1.77401
+  16 │ Fuel-Payload-Crew        3  Add Crew        33614.1  15.6789         29.7641            7.08081         5.84803
+  17 │ Payload-Crew-Fuel        0  Empty weight    16271.0  16.067          41.0198           -4.17487        -5.40765
+  18 │ Payload-Crew-Fuel        1  Add Payload     23621.0  15.7335         31.3485            5.49645         4.26367
+  19 │ Payload-Crew-Fuel        2  Add Crew        23981.0  15.5378         25.6753           11.1696          9.93685
+  20 │ Payload-Crew-Fuel        3  Add Fuel        33614.1  15.6789         29.7641            7.08081         5.84803
+  21 │ Payload-Fuel-Crew        0  Empty weight    16271.0  16.067          41.0198           -4.17487        -5.40765
+  22 │ Payload-Fuel-Crew        1  Add Payload     23621.0  15.7335         31.3485            5.49645         4.26367
+  23 │ Payload-Fuel-Crew        2  Add Fuel        33254.1  15.8194         33.8381            3.00679         1.77401
+  24 │ Payload-Fuel-Crew        3  Add Crew        33614.1  15.6789         29.7641            7.08081         5.84803
+
+
+Mission CG Excursion
+--------------------------------------------------------------------------------
+18×9 DataFrame
+ Row │ Phase                     Beta      Fuel_mass_kg  Weight_kg  x_cg_m   CG_percent_MAC  SM_DATCOM_percent  SM_VLM_percent  Mission_progress
+     │ String                    Float64   Float64       Float64    Float64  Float64         Float64            Float64         Float64
+─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │ Outbound - Start of leg   1.0           9633.13     33614.1  15.6789         29.7641            7.08081         5.84803         0.0
+   2 │ Outbound - After Warm-up  0.99          9296.99     33278.0  15.6753         29.6613            7.18362         5.95084         0.0588235
+   3 │ Outbound - After Taxi     0.9801        8964.21     32945.2  15.6717         29.5574            7.28748         6.0547          0.117647
+   4 │ Outbound - After Takeoff  0.975199      8799.48     32780.5  15.6699         29.5052            7.33967         6.10689         0.176471
+   5 │ Outbound - After Climb    0.955696      8143.87     32124.8  15.6626         29.2922            7.55268         6.3199          0.235294
+   6 │ Outbound - After Cruise   0.890403      5949.13     29930.1  15.6357         28.5112            8.33369         7.10091         0.294118
+   7 │ Outbound - After Loiter   0.869777      5255.8      29236.8  15.6263         28.2401            8.60478         7.372           0.352941
+   8 │ Outbound - After Descent  0.861079      4963.43     28944.4  15.6222         28.1219            8.72299         7.49021         0.411765
+   9 │ Outbound - After Landing  0.854191      4731.87     28712.8  15.6189         28.0266            8.81832         7.58554         0.470588
+  10 │ Return - Start of leg     0.854191      4731.87     28712.8  15.6189         28.0266            8.81832         7.58554         0.529412
+  11 │ Return - After Warm-up    0.845649      4444.75     28425.7  15.6148         27.9062            8.93869         7.70591         0.588235
+  12 │ Return - After Taxi       0.837192      4160.49     28141.5  15.6106         27.7846            9.06027         7.82749         0.647059
+  13 │ Return - After Takeoff    0.833006      4019.78     28000.8  15.6085         27.7235            9.12137         7.88859         0.705882
+  14 │ Return - After Climb      0.816346      3459.77     27440.7  15.5999         27.4742            9.37074         8.13796         0.764706
+  15 │ Return - After Cruise     0.760574      1585.03     25566.0  15.5684         26.5599           10.2851          9.05229         0.823529
+  16 │ Return - After Loiter     0.742955       992.798    24973.8  15.5574         26.2425           10.6024          9.36966         0.882353
+  17 │ Return - After Descent    0.735526       743.061    24724.0  15.5526         26.1041           10.7408          9.50804         0.941176
+  18 │ Return - After Landing    0.729641       545.268    24526.2  15.5488         25.9925           10.8524          9.61965         1.0
+
+
+Boarding Potato Data
+--------------------------------------------------------------------------------
+30×8 DataFrame
+ Row │ Method                          Step_No  Step                    Weight_kg  x_cg_m   CG_percent_MAC  SM_DATCOM_percent  SM_VLM_percent
+     │ String                          Int64    String                  Float64    Float64  Float64         Float64            Float64
+─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │ Forward boundary: front-to-aft        0  Start: OEW + crew         16631.0  15.7777         32.63             4.21489          2.98211
+   2 │ Forward boundary: front-to-aft        1  Window seats: zone 1      17171.0  15.4859         24.1697          12.6752          11.4424
+   3 │ Forward boundary: front-to-aft        2  Window seats: zone 2      17711.0  15.3089         19.0368          17.8081          16.5754
+   4 │ Forward boundary: front-to-aft        3  Window seats: zone 3      18251.0  15.2365         16.9358          19.9091          18.6764
+   5 │ Forward boundary: front-to-aft        4  Window seats: zone 4      18791.0  15.2595         17.6054          19.2396          18.0068
+   6 │ Forward boundary: front-to-aft        5  Window seats: zone 5      19331.0  15.3702         20.8133          16.0316          14.7988
+   7 │ Forward boundary: front-to-aft        6  Window seats: zone 6      19781.0  15.5301         25.4505          11.3944          10.1616
+   8 │ Forward boundary: front-to-aft        7  Aisle seats: zone 1       20321.0  15.2901         18.4925          18.3524          17.1197
+   9 │ Forward boundary: front-to-aft        8  Aisle seats: zone 2       20861.0  15.1449         14.2815          22.5634          21.3306
+  10 │ Forward boundary: front-to-aft        9  Aisle seats: zone 3       21401.0  15.0873         12.6098          24.2351          23.0024
+  11 │ Forward boundary: front-to-aft       10  Aisle seats: zone 4       21941.0  15.1107         13.2897          23.5552          22.3224
+  12 │ Forward boundary: front-to-aft       11  Aisle seats: zone 5       22481.0  15.2094         16.1518          20.6931          19.4603
+  13 │ Forward boundary: front-to-aft       12  Aisle seats: zone 6       22931.0  15.3505         20.2435          16.6014          15.3686
+  14 │ Forward boundary: front-to-aft       13  Load baggage/cargo        23981.0  15.4782         23.945           12.8999          11.6671
+  15 │ Forward boundary: front-to-aft       14  Fuel uplift / dispatch    33614.1  15.6363         28.5297           8.31523          7.08245
+  16 │ Aft boundary: aft-to-front            0  Start: OEW + crew         16631.0  15.7777         32.63             4.21489          2.98211
+  17 │ Aft boundary: aft-to-front            1  Window seats: zone 6      17081.0  15.9522         37.6889          -0.843997        -2.07678
+  18 │ Aft boundary: aft-to-front            2  Window seats: zone 5      17621.0  16.0523         40.5927          -3.74782         -4.9806
+  19 │ Aft boundary: aft-to-front            3  Window seats: zone 4      18161.0  16.0519         40.5821          -3.73721         -4.96999
+  20 │ Aft boundary: aft-to-front            4  Window seats: zone 3      18701.0  15.9598         37.9095          -1.06463         -2.29741
+  21 │ Aft boundary: aft-to-front            5  Window seats: zone 2      19241.0  15.7835         32.7991           4.04578          2.813
+  22 │ Aft boundary: aft-to-front            6  Window seats: zone 1      19781.0  15.5301         25.4505          11.3944          10.1616
+  23 │ Aft boundary: aft-to-front            7  Aisle seats: zone 6       20231.0  15.6829         29.8814           6.96349          5.73071
+  24 │ Aft boundary: aft-to-front            8  Aisle seats: zone 5       20771.0  15.7749         32.5479           4.29706          3.06429
+  25 │ Aft boundary: aft-to-front            9  Aisle seats: zone 4       21311.0  15.7816         32.7427           4.10226          2.86948
+  26 │ Aft boundary: aft-to-front           10  Aisle seats: zone 3       21851.0  15.7094         30.6491           6.19582          4.96304
+  27 │ Aft boundary: aft-to-front           11  Aisle seats: zone 2       22391.0  15.564          26.4327          10.4122           9.17942
+  28 │ Aft boundary: aft-to-front           12  Aisle seats: zone 1       22931.0  15.3505         20.2435          16.6014          15.3686
+  29 │ Aft boundary: aft-to-front           13  Load baggage/cargo        23981.0  15.4782         23.945           12.8999          11.6671
+  30 │ Aft boundary: aft-to-front           14  Fuel uplift / dispatch    33614.1  15.6363         28.5297           8.31523          7.08245
+
+
+Aerodynamic and Stability Derivatives
+--------------------------------------------------------------------------------
+13×3 DataFrame
+ Row │ Quantity                           Value       Notes
+     │ String                             String      String
+─────┼──────────────────────────────────────────────────────────────────────────────────
+   1 │ Aircraft Cm_alpha (VLM)            -30.363586  Pitching moment derivative with …
+   2 │ Aircraft CZ_alpha (VLM)            6.260762    Aircraft vertical-force/lift-rel…
+   3 │ Wing CZ_alpha (VLM)                5.598776    Wing lift-related derivative fro…
+   4 │ Horizontal tail CZ_alpha (VLM)     0.661985    Horizontal-tail lift-related der…
+   5 │ Wing CL_alpha (DATCOM)             5.409299    DATCOM wing lift-curve slope
+   6 │ Horizontal tail CL_alpha (DATCOM)  2.448798    DATCOM horizontal-tail lift-curv…
+   7 │ dCm/dCL from VLM alpha sweep       -4.881516   Linear fit of Cm against CL usin…
+   8 │ Fuselage dCmf/dCL used with DATC…  0.286405    Fuselage moment-lift derivative …
+   9 │ Fuselage dCmf/dCL used with VLM    0.276713    Fuselage moment-lift derivative …
+  10 │ DATCOM neutral point x_np          15.923055   Neutral point from DATCOM-style …
+  11 │ VLM neutral point x_np             15.880541   Neutral point from VLM Cm-CL slo…
+  12 │ Empty/component DATCOM static ma…  -4.174871   Static margin using empty/compon…
+  13 │ Empty/component VLM static margin  -5.407651   Static margin using empty/compon…
+
+
+Boarding Potato Points Label Table
+--------------------------------------------------------------------------------
+30×8 DataFrame
+ Row │ Label   Method                          Step_No  Step                    Weight_kg  CG_percent_MAC  SM_DATCOM_percent  SM_VLM_percent
+     │ String  String                          Int64    String                  Float64    Float64         Float64            Float64
+─────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │ P1      Forward boundary: front-to-aft        0  Start: OEW + crew         16631.0         32.63             4.21489          2.98211
+   2 │ P2      Forward boundary: front-to-aft        1  Window seats: zone 1      17171.0         24.1697          12.6752          11.4424
+   3 │ P3      Forward boundary: front-to-aft        2  Window seats: zone 2      17711.0         19.0368          17.8081          16.5754
+   4 │ P4      Forward boundary: front-to-aft        3  Window seats: zone 3      18251.0         16.9358          19.9091          18.6764
+   5 │ P5      Forward boundary: front-to-aft        4  Window seats: zone 4      18791.0         17.6054          19.2396          18.0068
+   6 │ P6      Forward boundary: front-to-aft        5  Window seats: zone 5      19331.0         20.8133          16.0316          14.7988
+   7 │ P7      Forward boundary: front-to-aft        6  Window seats: zone 6      19781.0         25.4505          11.3944          10.1616
+   8 │ P8      Forward boundary: front-to-aft        7  Aisle seats: zone 1       20321.0         18.4925          18.3524          17.1197
+   9 │ P9      Forward boundary: front-to-aft        8  Aisle seats: zone 2       20861.0         14.2815          22.5634          21.3306
+  10 │ P10     Forward boundary: front-to-aft        9  Aisle seats: zone 3       21401.0         12.6098          24.2351          23.0024
+  11 │ P11     Forward boundary: front-to-aft       10  Aisle seats: zone 4       21941.0         13.2897          23.5552          22.3224
+  12 │ P12     Forward boundary: front-to-aft       11  Aisle seats: zone 5       22481.0         16.1518          20.6931          19.4603
+  13 │ P13     Forward boundary: front-to-aft       12  Aisle seats: zone 6       22931.0         20.2435          16.6014          15.3686
+  14 │ P14     Forward boundary: front-to-aft       13  Load baggage/cargo        23981.0         23.945           12.8999          11.6671
+  15 │ P15     Forward boundary: front-to-aft       14  Fuel uplift / dispatch    33614.1         28.5297           8.31523          7.08245
+  16 │ P16     Aft boundary: aft-to-front            0  Start: OEW + crew         16631.0         32.63             4.21489          2.98211
+  17 │ P17     Aft boundary: aft-to-front            1  Window seats: zone 6      17081.0         37.6889          -0.843997        -2.07678
+  18 │ P18     Aft boundary: aft-to-front            2  Window seats: zone 5      17621.0         40.5927          -3.74782         -4.9806
+  19 │ P19     Aft boundary: aft-to-front            3  Window seats: zone 4      18161.0         40.5821          -3.73721         -4.96999
+  20 │ P20     Aft boundary: aft-to-front            4  Window seats: zone 3      18701.0         37.9095          -1.06463         -2.29741
+  21 │ P21     Aft boundary: aft-to-front            5  Window seats: zone 2      19241.0         32.7991           4.04578          2.813
+  22 │ P22     Aft boundary: aft-to-front            6  Window seats: zone 1      19781.0         25.4505          11.3944          10.1616
+  23 │ P23     Aft boundary: aft-to-front            7  Aisle seats: zone 6       20231.0         29.8814           6.96349          5.73071
+  24 │ P24     Aft boundary: aft-to-front            8  Aisle seats: zone 5       20771.0         32.5479           4.29706          3.06429
+  25 │ P25     Aft boundary: aft-to-front            9  Aisle seats: zone 4       21311.0         32.7427           4.10226          2.86948
+  26 │ P26     Aft boundary: aft-to-front           10  Aisle seats: zone 3       21851.0         30.6491           6.19582          4.96304
+  27 │ P27     Aft boundary: aft-to-front           11  Aisle seats: zone 2       22391.0         26.4327          10.4122           9.17942
+  28 │ P28     Aft boundary: aft-to-front           12  Aisle seats: zone 1       22931.0         20.2435          16.6014          15.3686
+  29 │ P29     Aft boundary: aft-to-front           13  Load baggage/cargo        23981.0         23.945           12.8999          11.6671
+  30 │ P30     Aft boundary: aft-to-front           14  Fuel uplift / dispatch    33614.1         28.5297           8.31523          7.08245
+
