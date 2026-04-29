@@ -1,6 +1,6 @@
-aftcg = 15.6466;
-fwdcg = 15.5046;
-main = 16.9;
+aftcg = 16.5099;
+fwdcg = 15.4986;
+main = 17.8;
 nose = 4.5;
 Ma = main - aftcg;
 Mf = main - fwdcg;
