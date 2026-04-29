@@ -74,7 +74,7 @@
         dihedrals   = [5.0, 7.0],               # Dihedral angles (deg)
         sweeps      = [30.0, 30.0],             # Sweep angles (deg )
         w_sweep     = 0.0,                      # Leading-edge sweep
-        position    = [11, 0.0, -1.0],      	 # HOW DO YOU DETERMINE THIS?
+        position    = [11.4, 0.0, -1.0],      	 # HOW DO YOU DETERMINE THIS?
         symmetry    = true,                      # Symmetry
         angle       = 5,
         axis        = [0, 1, 0]
@@ -237,7 +237,7 @@
             ## Orientation
             angle       = -3,           # Incidence angle (deg), HOW DO YOU DETERMINE THIS?
             axis        = [0., 1., 0.], # Axis of rotation, y-axis
-            position    = [ fuse_end_x - 4.0, 0., 0.], # HOW DO YOU DETERMINE THIS?
+            position    = [ fuse_end_x - 5.5, 0., 0.], # HOW DO YOU DETERMINE THIS?
         );
 
 
@@ -412,11 +412,13 @@ end;
 
     # ╔═╡ ae708986-6529-4069-904e-60858905f319
     begin
-        x_nose 	= fuse.affine.translation.x 	# Nose location 
-        x_fuse 	= x_nose + fuse.length / 2   	# Fuselage centroid (50% L_f)
-        x_other = x_nose + fuse.length / 2 		# All-other component centroid (50% L_f)
-        x_nLG  	= x_nose + 0.15 * fuse.length  	# Nose landing gear centroid (15% L_f)
-        x_mLG 	= x_nose + 0.5 * fuse.length  	# Main landing gear centroid (50% L_f)
+        x_nose 	= fuse.affine.translation.x
+        x_fuse 	= x_nose + fuse.length / 2
+        x_other = x_nose + fuse.length / 2
+
+        # Final landing gear longitudinal positions from landing gear sizing
+        x_nLG  	= 4.5
+        x_mLG 	= 17.8
     end;
 
     # ╔═╡ 0567a709-6420-44f6-908f-28c283bbaecf
@@ -481,7 +483,7 @@ end;
                 (w * airframe_scale, x)
             end
         end
-        for (name, wx) in weight_position
+        for (name, wx) in weight_position_raw
     )
 
     # ╔═╡ 1cb4658c-16ac-412b-8dfb-49778f7fe78a
@@ -1069,20 +1071,7 @@ x_crew_export = 0.55 * l_nose
 W_baggage_export = n_pax * W_bag_each
 x_baggage_export = l_nose + 0.70 * l_cabin
 
-# Passenger groups for CG calculations
-n_pax_groups = 14
-pax_per_group = fill(n_pax ÷ n_pax_groups, n_pax_groups)
-for i in 1:(n_pax - sum(pax_per_group))
-    pax_per_group[i] += 1
-end
 
-x_pax_groups = [
-    l_nose + (i - 0.5) / n_pax_groups * l_cabin
-    for i in 1:n_pax_groups
-]
-
-W_pax_total = n_pax * W_pax_each
-x_pax_total = sum((pax_per_group[i] * W_pax_each) * x_pax_groups[i] for i in 1:n_pax_groups) / W_pax_total
 
 # Fuel CG near wing MAC 40%
 x_fuel_export = mac40_w.x
@@ -1141,6 +1130,93 @@ original_results = DataFrame(
     MAC_m = [c_w, c_w],
     x_LEMAC_m = [x_LEMAC_export, x_LEMAC_export]
 )
+
+# ------------------------------------------------------------
+# Passenger / boarding zones based on actual cabin layout
+# Z1 = Business / First class
+# Z2-Z5 = Economy divided into four row blocks
+# This is used for ALL passenger CG calculations:
+# zero-fuel, full takeoff, mission, and potato plot.
+# ------------------------------------------------------------
+
+# Cabin layout:
+# Business / First class: 2 rows, 1×2 = 6 pax
+# Economy: 16 rows, 2×2 = 64 pax
+n_business_rows = 2
+n_economy_rows  = 16
+n_rows_total    = n_business_rows + n_economy_rows
+
+n_board_zones = 5
+
+# Row x-locations from front to rear of cabin
+x_rows = [
+    l_nose + (i - 0.5) / n_rows_total * l_cabin
+    for i in 1:n_rows_total
+]
+
+# Passenger count per row
+# First 2 rows: 3 pax per row
+# Economy rows: 4 pax per row
+pax_per_row = vcat(
+    fill(3, n_business_rows),
+    fill(4, n_economy_rows)
+)
+
+if sum(pax_per_row) != n_pax
+    error("Passenger zoning does not match n_pax. Check cabin layout.")
+end
+
+# Zone definitions
+zone_rows = Dict(
+    1 => 1:2,      # Business / First class, 6 pax
+    2 => 3:6,      # Front economy, 16 pax
+    3 => 7:10,     # Mid-front economy, 16 pax
+    4 => 11:14,    # Mid-aft economy, 16 pax
+    5 => 15:18     # Aft economy, 16 pax
+)
+
+zone_names = Dict(
+    1 => "Business / First",
+    2 => "Front economy",
+    3 => "Mid-front economy",
+    4 => "Mid-aft economy",
+    5 => "Aft economy"
+)
+
+# Passenger count per zone
+pax_per_zone_board = [
+    sum(pax_per_row[collect(zone_rows[z])])
+    for z in 1:n_board_zones
+]
+
+# Zone CG location
+x_zone_board = [
+    sum(pax_per_row[collect(zone_rows[z])] .* x_rows[collect(zone_rows[z])]) /
+    sum(pax_per_row[collect(zone_rows[z])])
+    for z in 1:n_board_zones
+]
+
+# Total passenger weight and CG using zone model
+W_pax_total = n_pax * W_pax_each
+
+x_pax_total = sum(
+    pax_per_zone_board[z] * W_pax_each * x_zone_board[z]
+    for z in 1:n_board_zones
+) / W_pax_total
+
+# Zone summary table
+zone_summary = DataFrame(
+    Zone = collect(1:n_board_zones),
+    Zone_name = [zone_names[z] for z in 1:n_board_zones],
+    Row_range = [string(first(zone_rows[z]), "–", last(zone_rows[z])) for z in 1:n_board_zones],
+    Passenger_count = pax_per_zone_board,
+    Passenger_weight_kg = pax_per_zone_board .* W_pax_each,
+    x_zone_m = x_zone_board,
+    x_zone_percent_MAC = [pctMAC_export(x) for x in x_zone_board]
+)
+
+W_pax_total = n_pax * W_pax_each
+x_pax_total = sum((pax_per_group[i] * W_pax_each) * x_pax_groups[i] for i in 1:n_pax_groups) / W_pax_total
 
 # ------------------------------------------------------------
 # Zero-fuel and full-fuel weights
@@ -1321,31 +1397,164 @@ for (phase, beta_phase) in mission_beta
 end
 
 mission_cg[!, :Mission_progress] = collect(range(0.0, 1.0, length=nrow(mission_cg)))
-# ------------------------------------------------------------
-# Good boarding method potato plot
-# Use a balanced-zone boarding order, plus unloading
-# ------------------------------------------------------------
-n_board_zones = 6
-pax_per_zone_board = fill(n_pax ÷ n_board_zones, n_board_zones)
-for i in 1:(n_pax - sum(pax_per_zone_board))
-    pax_per_zone_board[i] += 1
-end
+# ============================================================
+# ZONE-BOARDING POTATO PLOT MODEL
+# Includes a loading line before the potato:
+# Empty -> crew -> fuel -> baggage
+# Then zone boarding creates the potato envelope.
+# ============================================================
 
-x_zone_board = [
-    l_nose + (i - 0.5) / n_board_zones * l_cabin
-    for i in 1:n_board_zones
+# ------------------------------------------------------------
+# Boarding zones based on actual cabin layout
+# Z1 = Business / First class
+# Z2-Z5 = Economy divided into four row blocks
+# ------------------------------------------------------------
+
+# Cabin layout:
+# Business / First class: 2 rows, 1×2 = 6 pax
+# Economy: 16 rows, 2×2 = 64 pax
+n_business_rows = 2
+n_economy_rows  = 16
+n_rows_total    = n_business_rows + n_economy_rows
+
+n_board_zones = 5
+
+# Row x-locations from front to rear of cabin
+# This assumes rows are distributed uniformly over cabin length.
+x_rows = [
+    l_nose + (i - 0.5) / n_rows_total * l_cabin
+    for i in 1:n_rows_total
 ]
 
-good_boarding_order = [3, 4, 2, 5, 1, 6]   # balanced-zone style
+# Passenger count per row
+# First 2 rows: 3 pax per row
+# Economy 16 rows: 4 pax per row
+pax_per_row = vcat(
+    fill(3, n_business_rows),
+    fill(4, n_economy_rows)
+)
 
-function good_boarding_trace()
+# Sanity check
+if sum(pax_per_row) != n_pax
+    error("Passenger zoning does not match n_pax. Check cabin layout.")
+end
+
+# Zone definitions using row numbers
+# Rows are absolute cabin rows from front to rear.
+zone_rows = Dict(
+    1 => 1:2,     # Business / First class, 6 pax
+    2 => 3:6,     # Front economy, 4 rows × 4 = 16 pax
+    3 => 7:10,    # Mid-front economy, 16 pax
+    4 => 11:14,   # Mid-aft economy, 16 pax
+    5 => 15:18    # Aft economy, 16 pax
+)
+
+zone_names = Dict(
+    1 => "Business / First",
+    2 => "Front economy",
+    3 => "Mid-front economy",
+    4 => "Mid-aft economy",
+    5 => "Aft economy"
+)
+
+# Passenger count per zone
+pax_per_zone_board = [
+    sum(pax_per_row[collect(zone_rows[z])])
+    for z in 1:n_board_zones
+]
+
+# Zone CG location = weighted average of row locations
+x_zone_board = [
+    sum(pax_per_row[collect(zone_rows[z])] .* x_rows[collect(zone_rows[z])]) /
+    sum(pax_per_row[collect(zone_rows[z])])
+    for z in 1:n_board_zones
+]
+
+# Zone summary table for export/report
+zone_summary = DataFrame(
+    Zone = collect(1:n_board_zones),
+    Zone_name = [zone_names[z] for z in 1:n_board_zones],
+    Row_range = [string(first(zone_rows[z]), "–", last(zone_rows[z])) for z in 1:n_board_zones],
+    Passenger_count = pax_per_zone_board,
+    Passenger_weight_kg = pax_per_zone_board .* W_pax_each,
+    x_zone_m = x_zone_board,
+    x_zone_percent_MAC = [pctMAC_export(x) for x in x_zone_board]
+)
+
+
+
+# ------------------------------------------------------------
+# Helper
+# ------------------------------------------------------------
+function make_items_state(; crew=false, fuel=false, baggage=false, boarded_zones=Int[])
     items = copy(weight_position)
 
-    # Start from OEW + crew + full fuel
-    items["crew"] = (W_crew_export, x_crew_export)
-    items["fuel"] = (W_fuel_export, x_fuel_export)
+    if crew
+        items["crew"] = (W_crew_export, x_crew_export)
+    end
+    if fuel
+        items["fuel"] = (W_fuel_export, x_fuel_export)
+    end
+    if baggage
+        items["baggage"] = (W_baggage_export, x_baggage_export)
+    end
 
-    df = DataFrame(
+    for z in boarded_zones
+        items["zone_$(z)"] = (pax_per_zone_board[z] * W_pax_each, x_zone_board[z])
+    end
+
+    return items
+end
+
+function state_row(method_name, step_no, step_name, items)
+    cg = cg_export(items)
+    return (
+        Method = method_name,
+        Step_No = step_no,
+        Step = step_name,
+        Weight_kg = cg.W,
+        x_cg_m = cg.xcg,
+        CG_percent_MAC = cg.pctMAC,
+        SM_DATCOM_percent = sm_datcom_from_xcg(cg.xcg),
+        SM_VLM_percent = sm_vlm_from_xcg(cg.xcg)
+    )
+end
+
+# ------------------------------------------------------------
+# Pre-boarding loading line:
+# Empty -> crew -> fuel -> baggage
+# This gives the "line over the potato"
+# ------------------------------------------------------------
+preboarding_trace = DataFrame([
+    state_row("Pre-boarding loading line", 0, "Empty weight", make_items_state()),
+    state_row("Pre-boarding loading line", 1, "Add crew", make_items_state(crew=true)),
+    state_row("Pre-boarding loading line", 2, "Add fuel", make_items_state(crew=true, fuel=true)),
+    state_row("Pre-boarding loading line", 3, "Add baggage", make_items_state(crew=true, fuel=true, baggage=true))
+])
+
+# Start point for boarding potato = OEW + crew + fuel + baggage
+# Then board passengers by zones.
+
+# # ------------------------------------------------------------
+# Boarding orders
+# Business / First class always boards first
+# ------------------------------------------------------------
+
+# Front-based case:
+# Business first, then economy from front to rear
+front_biased_order = [1, 2, 3, 4, 5]
+
+# Back-based case:
+# Business first, then economy from rear to front
+aft_biased_order = [1, 5, 4, 3, 2]
+
+# Recommended case:
+# Business first, then middle economy zones, then front economy,
+# and aft economy last to avoid excessive aft-CG shift.
+recommended_order = [1, 3, 4, 2, 5]
+
+function zone_boarding_trace(order, method_name)
+    rows = DataFrame(
         Method = String[],
         Step_No = Int[],
         Step = String[],
@@ -1356,54 +1565,82 @@ function good_boarding_trace()
         SM_VLM_percent = Float64[]
     )
 
-    function push_state!(df, items, method_name, step_no, step_name)
-        cg = cg_export(items)
-        push!(df, (
-            method_name,
-            step_no,
-            step_name,
-            cg.W,
-            cg.xcg,
-            cg.pctMAC,
-            sm_datcom_from_xcg(cg.xcg),
-            sm_vlm_from_xcg(cg.xcg)
-        ))
+    # Start from OEW + crew + fuel + baggage
+    push!(rows, state_row(method_name, 0, "A: OEW + crew + fuel + baggage",
+        make_items_state(crew=true, fuel=true, baggage=true)))
+
+    boarded = Int[]
+    for (k, z) in enumerate(order)
+        push!(boarded, z)
+        push!(rows, state_row(method_name, k, "Board zone $(z)",
+            make_items_state(crew=true, fuel=true, baggage=true, boarded_zones=boarded)))
     end
 
-    step_no = 0
-    push_state!(df, items, "Balanced-zone boarding", step_no, "Start: OEW + crew + fuel")
-
-    step_no += 1
-    items["baggage"] = (W_baggage_export, x_baggage_export)
-    push_state!(df, items, "Balanced-zone boarding", step_no, "Add baggage")
-
-    for idx in good_boarding_order
-        step_no += 1
-        items["board_zone_$(idx)"] = (
-            pax_per_zone_board[idx] * W_pax_each,
-            x_zone_board[idx]
-        )
-        push_state!(df, items, "Balanced-zone boarding", step_no, "Board zone $(idx)")
-    end
-
-    for idx in reverse(good_boarding_order)
-        step_no += 1
-        delete!(items, "board_zone_$(idx)")
-        push_state!(df, items, "Balanced-zone boarding", step_no, "Unload zone $(idx)")
-    end
-
-    step_no += 1
-    delete!(items, "baggage")
-    push_state!(df, items, "Balanced-zone boarding", step_no, "Unload baggage")
-
-    return df
+    return rows
 end
 
-boarding_cg = good_boarding_trace()
+front_trace = zone_boarding_trace(front_biased_order, "Front-biased zone boarding")
+aft_trace = zone_boarding_trace(aft_biased_order, "Aft-biased zone boarding")
+recommended_trace = zone_boarding_trace(recommended_order, "Recommended balanced zone boarding")
+
+# Keep this name for compatibility with the rest of your notebook
+boarding_cg = recommended_trace
+
+# Cases for CG envelope checks
+boarding_envelope_cases = vcat(preboarding_trace, front_trace, aft_trace, recommended_trace)
+
+# ------------------------------------------------------------
+# Potato envelope from front-biased and aft-biased branches
+# same step number = same passenger count
+# ------------------------------------------------------------
+potato_envelope = DataFrame(
+    Step_No = front_trace.Step_No,
+    Weight_kg = front_trace.Weight_kg,
+    Forward_CG_percent_MAC = [
+        min(front_trace.CG_percent_MAC[i], aft_trace.CG_percent_MAC[i])
+        for i in 1:nrow(front_trace)
+    ],
+    Aft_CG_percent_MAC = [
+        max(front_trace.CG_percent_MAC[i], aft_trace.CG_percent_MAC[i])
+        for i in 1:nrow(front_trace)
+    ]
+)
+
+boarding_group_summary = DataFrame(
+    Method = ["Front-biased", "Aft-biased", "Recommended balanced"],
+    Order = [string(front_biased_order), string(aft_biased_order), string(recommended_order)],
+    Min_CG_percent_MAC = [
+        minimum(front_trace.CG_percent_MAC),
+        minimum(aft_trace.CG_percent_MAC),
+        minimum(recommended_trace.CG_percent_MAC)
+    ],
+    Max_CG_percent_MAC = [
+        maximum(front_trace.CG_percent_MAC),
+        maximum(aft_trace.CG_percent_MAC),
+        maximum(recommended_trace.CG_percent_MAC)
+    ],
+    Min_SM_DATCOM_percent = [
+        minimum(front_trace.SM_DATCOM_percent),
+        minimum(aft_trace.SM_DATCOM_percent),
+        minimum(recommended_trace.SM_DATCOM_percent)
+    ],
+    Min_SM_VLM_percent = [
+        minimum(front_trace.SM_VLM_percent),
+        minimum(aft_trace.SM_VLM_percent),
+        minimum(recommended_trace.SM_VLM_percent)
+    ]
+)
 
 # ------------------------------------------------------------
 # Gather all CG cases and determine limits
+# This must be BEFORE any plots using fwd_cg_limit_pct,
+# aft_cg_limit_pct, x_min_plot, x_max_plot, etc.
 # ------------------------------------------------------------
+
+# Reference CG range from lecture / transport aircraft guideline
+fwd_cg_limit_pct = 12.0
+aft_cg_limit_pct = 32.0
+
 mission_cases = DataFrame(
     Source = fill("Mission fuel burn", nrow(mission_cg)),
     Case = mission_cg.Phase,
@@ -1415,13 +1652,13 @@ mission_cases = DataFrame(
 )
 
 boarding_cases = DataFrame(
-    Source = fill("Boarding potato plot", nrow(boarding_cg)),
-    Case = boarding_cg.Method .* " - " .* boarding_cg.Step,
-    Weight_kg = boarding_cg.Weight_kg,
-    x_cg_m = boarding_cg.x_cg_m,
-    CG_percent_MAC = boarding_cg.CG_percent_MAC,
-    SM_DATCOM_percent = boarding_cg.SM_DATCOM_percent,
-    SM_VLM_percent = boarding_cg.SM_VLM_percent
+    Source = fill("Zone boarding / loading", nrow(boarding_envelope_cases)),
+    Case = boarding_envelope_cases.Method .* " - " .* boarding_envelope_cases.Step,
+    Weight_kg = boarding_envelope_cases.Weight_kg,
+    x_cg_m = boarding_envelope_cases.x_cg_m,
+    CG_percent_MAC = boarding_envelope_cases.CG_percent_MAC,
+    SM_DATCOM_percent = boarding_envelope_cases.SM_DATCOM_percent,
+    SM_VLM_percent = boarding_envelope_cases.SM_VLM_percent
 )
 
 loading_cases = DataFrame(
@@ -1450,12 +1687,14 @@ cg_limits = DataFrame(
     SM_VLM_percent = [all_cg_cases.SM_VLM_percent[fwd_idx], all_cg_cases.SM_VLM_percent[aft_idx]]
 )
 
-# Reference CG range from lecture slide
-fwd_cg_limit_pct = 12.0
-aft_cg_limit_pct = 32.0
-
 cg_reference_check = DataFrame(
-    Quantity = ["Minimum CG", "Maximum CG", "Forward reference", "Aft reference", "Within 12–32% MAC?"],
+    Quantity = [
+        "Minimum CG",
+        "Maximum CG",
+        "Forward reference",
+        "Aft reference",
+        "Within 12–32% MAC?"
+    ],
     Value = Any[
         minimum(all_cg_cases.CG_percent_MAC),
         maximum(all_cg_cases.CG_percent_MAC),
@@ -1469,17 +1708,16 @@ cg_reference_check = DataFrame(
 println(cg_limits)
 println(cg_reference_check)
 
-# ============================================================
-# 7) PLOTS
-# ============================================================
+# Plot limits for CG excursion plot
 x_min_plot = min(minimum(all_cg_cases.CG_percent_MAC) - 2, fwd_cg_limit_pct - 2)
 x_max_plot = max(maximum(all_cg_cases.CG_percent_MAC) + 2, aft_cg_limit_pct + 2)
 y_min_plot = minimum(all_cg_cases.Weight_kg) - 1000
 y_max_plot = maximum(all_cg_cases.Weight_kg) + 1000
 
-# ------------------------------------------------------------
-# Representative loading-case CG curve
-# ------------------------------------------------------------
+# ============================================================
+# REPRESENTATIVE LOADING-CASE CG PLOT
+# ============================================================
+
 loading_cases_plot = plot(
     loading_main.CG_percent_MAC,
     loading_main.Weight_kg,
@@ -1490,11 +1728,25 @@ loading_cases_plot = plot(
     title = "CG in Representative Loading Cases",
     label = "Empty → Crew → Fuel → Payload",
     grid = true,
-    legend = :topright
+    legend = :outerright,
+    size = (1000, 650)
 )
 
-vline!(loading_cases_plot, [fwd_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Forward CG ref. limit")
-vline!(loading_cases_plot, [aft_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Aft CG ref. limit")
+vline!(
+    loading_cases_plot,
+    [fwd_cg_limit_pct],
+    linestyle = :dash,
+    linewidth = 2,
+    label = "Forward CG ref. limit"
+)
+
+vline!(
+    loading_cases_plot,
+    [aft_cg_limit_pct],
+    linestyle = :dash,
+    linewidth = 2,
+    label = "Aft CG ref. limit"
+)
 
 for i in 1:nrow(loading_main)
     annotate!(
@@ -1505,9 +1757,11 @@ for i in 1:nrow(loading_main)
     )
 end
 
-# ------------------------------------------------------------
-# Mission CG curve with annotations
-# ------------------------------------------------------------
+
+# ============================================================
+# MISSION CG EXCURSION PLOT
+# ============================================================
+
 mission_cg_plot = plot(
     mission_cg.CG_percent_MAC,
     mission_cg.Weight_kg,
@@ -1518,20 +1772,35 @@ mission_cg_plot = plot(
     title = "Mission CG Excursion Due to Fuel Burn (Two-Way Mission)",
     label = "Mission fuel burn",
     grid = true,
-    legend = :topright
+    legend = :bottomleft,
+    size = (1000, 650)
 )
 
-vline!(mission_cg_plot, [fwd_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Forward CG ref. limit")
-vline!(mission_cg_plot, [aft_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Aft CG ref. limit")
+vline!(
+    mission_cg_plot,
+    [fwd_cg_limit_pct],
+    linestyle = :dash,
+    linewidth = 2,
+    label = "Forward CG ref. limit"
+)
+
+vline!(
+    mission_cg_plot,
+    [aft_cg_limit_pct],
+    linestyle = :dash,
+    linewidth = 2,
+    label = "Aft CG ref. limit"
+)
 
 mission_labels = Dict(
     "Outbound - Start of leg" => "HKG departure",
-    "Outbound - After climb" => "Outbound climb",
-    "Outbound - After cruise" => "Outbound cruise",
-    "Outbound - After landing" => "Outstation landing",
-    "Return - After takeoff" => "Return takeoff",
-    "Return - After cruise" => "Return cruise",
-    "Return - After landing" => "Final landing"
+    "Outbound - After Climb" => "Outbound climb",
+    "Outbound - After Cruise" => "Outbound cruise",
+    "Outbound - After Landing" => "Outstation landing",
+    "Return - Start of leg" => "Return start",
+    "Return - After Takeoff" => "Return takeoff",
+    "Return - After Cruise" => "Return cruise",
+    "Return - After Landing" => "Final landing"
 )
 
 for i in 1:nrow(mission_cg)
@@ -1546,103 +1815,157 @@ for i in 1:nrow(mission_cg)
     end
 end
 
+# Keep this name because your export section saves mission_only_plot
 mission_only_plot = mission_cg_plot
 
-# ------------------------------------------------------------
-# Potato plot: good boarding method with loading + unloading
-# ------------------------------------------------------------
-first_unload_idx = findfirst(s -> startswith(s, "Unload"), boarding_cg.Step)
-full_load_idx = first_unload_idx - 1
+# ============================================================
+# POTATO PLOT - ZONE BOARDING + LOADING + MISSION LINE
+# ============================================================
 
-load_rows = 1:full_load_idx
-unload_rows = first_unload_idx:nrow(boarding_cg)
+# Polygon for potato shape
+x_poly = vcat(
+    potato_envelope.Forward_CG_percent_MAC,
+    reverse(potato_envelope.Aft_CG_percent_MAC)
+)
+
+y_poly = vcat(
+    potato_envelope.Weight_kg,
+    reverse(potato_envelope.Weight_kg)
+)
 
 potato_plot = plot(
+    x_poly,
+    y_poly,
+    seriestype = :shape,
+    alpha = 0.18,
+    linewidth = 0,
+    label = "Zone-boarding CG envelope",
     xlabel = "CG location (%MAC)",
     ylabel = "Aircraft weight (kg)",
-    title = "Boarding Potato Plot — Balanced-Zone Boarding",
-    legend = :topright,
-    grid = true
+    title = "Potato Plot — Zone Boarding with Loading Line",
+    legend = :outerright,
+    grid = true,
+    size = (1100, 700)
 )
 
+# Potato forward boundary
 plot!(
     potato_plot,
-    boarding_cg.CG_percent_MAC[load_rows],
-    boarding_cg.Weight_kg[load_rows],
+    potato_envelope.Forward_CG_percent_MAC,
+    potato_envelope.Weight_kg,
+    linewidth = 2.5,
     marker = :circle,
-    linewidth = 2.5,
-    label = "Loading"
+    label = "Front-first zone boarding"
 )
 
+# Potato aft boundary
 plot!(
     potato_plot,
-    boarding_cg.CG_percent_MAC[unload_rows],
-    boarding_cg.Weight_kg[unload_rows],
-    marker = :diamond,
+    potato_envelope.Aft_CG_percent_MAC,
+    potato_envelope.Weight_kg,
     linewidth = 2.5,
-    label = "Unloading"
+    marker = :diamond,
+    label = "Rear-first zone boarding"
 )
 
-vline!(potato_plot, [fwd_cg_limit_pct], linestyle = :dot, linewidth = 2, label = "Forward CG ref. limit")
-vline!(potato_plot, [aft_cg_limit_pct], linestyle = :dot, linewidth = 2, label = "Aft CG ref. limit")
+# Recommended zone boarding path
+plot!(
+    potato_plot,
+    recommended_trace.CG_percent_MAC,
+    recommended_trace.Weight_kg,
+    linewidth = 3,
+    marker = :star,
+    label = "Recommended zone boarding"
+)
 
-annotate!(potato_plot, boarding_cg.CG_percent_MAC[1], boarding_cg.Weight_kg[1], text("Start", 8, :right))
-annotate!(potato_plot, boarding_cg.CG_percent_MAC[full_load_idx], boarding_cg.Weight_kg[full_load_idx], text("Full load", 8, :left))
-annotate!(potato_plot, boarding_cg.CG_percent_MAC[end], boarding_cg.Weight_kg[end], text("Unload complete", 8, :left))
+# Pre-boarding loading line: Empty -> crew -> fuel -> baggage
+plot!(
+    potato_plot,
+    preboarding_trace.CG_percent_MAC,
+    preboarding_trace.Weight_kg,
+    linewidth = 3,
+    marker = :square,
+    label = "Crew / fuel / baggage loading"
+)
+
+# CG limits
+vline!(
+    potato_plot,
+    [fwd_cg_limit_pct],
+    linestyle = :dash,
+    linewidth = 2,
+    label = "Forward CG ref. limit"
+)
+
+vline!(
+    potato_plot,
+    [aft_cg_limit_pct],
+    linestyle = :dash,
+    linewidth = 2,
+    label = "Aft CG ref. limit"
+)
+
+# Labels for recommended boarding points: A, B, C...
+point_labels = [string(Char('A' + i - 1)) for i in 1:nrow(recommended_trace)]
+for i in 1:nrow(recommended_trace)
+    annotate!(
+        potato_plot,
+        recommended_trace.CG_percent_MAC[i],
+        recommended_trace.Weight_kg[i],
+        text(point_labels[i], 8, :left)
+    )
+end
+
+# Labels for pre-boarding line
+for i in 1:nrow(preboarding_trace)
+    annotate!(
+        potato_plot,
+        preboarding_trace.CG_percent_MAC[i],
+        preboarding_trace.Weight_kg[i],
+        text(preboarding_trace.Step[i], 7, :right)
+    )
+end
 
 # ------------------------------------------------------------
-# Potato plot: points-only version
-# Shows each calculated loading/unloading state as a point
+# Points-only plot: recommended boarding sequence
 # ------------------------------------------------------------
-
-# Short labels for each point: A, B, C, ...
-point_labels = [string(Char('A' + i - 1)) for i in 1:nrow(boarding_cg)]
+point_labels = [string(Char('A' + i - 1)) for i in 1:nrow(recommended_trace)]
 
 potato_points_label_table = DataFrame(
     Label = point_labels,
-    Step_No = boarding_cg.Step_No,
-    Step = boarding_cg.Step,
-    Weight_kg = boarding_cg.Weight_kg,
-    CG_percent_MAC = boarding_cg.CG_percent_MAC,
-    SM_DATCOM_percent = boarding_cg.SM_DATCOM_percent,
-    SM_VLM_percent = boarding_cg.SM_VLM_percent
+    Step_No = recommended_trace.Step_No,
+    Step = recommended_trace.Step,
+    Weight_kg = recommended_trace.Weight_kg,
+    CG_percent_MAC = recommended_trace.CG_percent_MAC,
+    SM_DATCOM_percent = recommended_trace.SM_DATCOM_percent,
+    SM_VLM_percent = recommended_trace.SM_VLM_percent
 )
-
-# Split loading and unloading points
-first_unload_idx_points = findfirst(s -> startswith(s, "Unload"), boarding_cg.Step)
-full_load_idx_points = first_unload_idx_points - 1
-
-loading_point_rows = 1:full_load_idx_points
-unloading_point_rows = first_unload_idx_points:nrow(boarding_cg)
 
 potato_points_plot = plot(
     xlabel = "CG location (%MAC)",
     ylabel = "Aircraft weight (kg)",
-    title = "Boarding Potato Plot — Points Only",
-    legend = :topright,
-    grid = true
+    title = "Recommended Zone Boarding — Points Only",
+    legend = :outerright,
+    grid = true,
+    size = (1000, 650)
 )
 
-# Loading points only
 scatter!(
     potato_points_plot,
-    boarding_cg.CG_percent_MAC[loading_point_rows],
-    boarding_cg.Weight_kg[loading_point_rows],
+    recommended_trace.CG_percent_MAC,
+    recommended_trace.Weight_kg,
     markersize = 6,
-    label = "Loading points"
+    label = "Recommended boarding points"
 )
 
-# Unloading points only
-scatter!(
+plot!(
     potato_points_plot,
-    boarding_cg.CG_percent_MAC[unloading_point_rows],
-    boarding_cg.Weight_kg[unloading_point_rows],
-    markersize = 6,
-    marker = :diamond,
-    label = "Unloading points"
+    recommended_trace.CG_percent_MAC,
+    recommended_trace.Weight_kg,
+    linewidth = 2,
+    label = "Recommended sequence"
 )
 
-# Forward/aft CG reference limits
 vline!(
     potato_points_plot,
     [fwd_cg_limit_pct],
@@ -1659,12 +1982,11 @@ vline!(
     label = "Aft CG ref. limit"
 )
 
-# Label each point with A, B, C, ...
-for i in 1:nrow(boarding_cg)
+for i in 1:nrow(recommended_trace)
     annotate!(
         potato_points_plot,
-        boarding_cg.CG_percent_MAC[i],
-        boarding_cg.Weight_kg[i],
+        recommended_trace.CG_percent_MAC[i],
+        recommended_trace.Weight_kg[i],
         text(point_labels[i], 8, :left)
     )
 end
@@ -1728,7 +2050,7 @@ cg_excursion_plot = plot(
     xlabel = "CG location (%MAC)",
     ylabel = "Aircraft weight (kg)",
     title = "CG Excursion / Envelope Plot",
-    legend = :topright,
+    legend = :topleft,
     grid = true
 )
 
@@ -1755,11 +2077,11 @@ plot!(
 
 plot!(
     cg_excursion_plot,
-    boarding_cg.CG_percent_MAC,
-    boarding_cg.Weight_kg,
+    recommended_trace.CG_percent_MAC,
+    recommended_trace.Weight_kg,
     marker = :diamond,
     linewidth = 2,
-    label = "Boarding / unloading"
+    label = "Recommended boarding groups"
 )
 
         # ============================================================
@@ -1878,6 +2200,125 @@ full_takeoff_items["fuel"] = (W_fuel_export, x_fuel_export)
 full_takeoff_items["baggage"] = (W_baggage_export, x_baggage_export)
 add_items!(full_takeoff_items, passenger_items_dict())
 full_takeoff_cg = cg_export(full_takeoff_items)
+
+# ============================================================
+# 3D AIRCRAFT WEIGHT & BALANCE / STABILITY VISUALIZATION
+# ============================================================
+
+# component points for plotting/export
+aircraft_component_points = DataFrame(
+    Component = String[],
+    x_m = Float64[],
+    y_m = Float64[],
+    z_m = Float64[]
+)
+
+function add_component_point!(df, name, x, y, z)
+    push!(df, (name, x, y, z))
+end
+
+# Main reference points
+add_component_point!(aircraft_component_points, "Full takeoff CG", full_takeoff_cg.xcg, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "Empty/component CG", x_cg, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "Neutral point DATCOM", x_np_DATCOM_export, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "Neutral point VLM", x_np_VLM_export, 0.0, 0.0)
+
+# Main structural CGs
+add_component_point!(aircraft_component_points, "Wing CG", mac40_w.x, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "H-tail CG", mac40_h.x, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "V-tail CG", mac40_v.x, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "Fuselage CG", x_fuse, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "All-else CG", x_other, 0.0, 0.0)
+
+# Engines
+add_component_point!(aircraft_component_points, "Left engine", eng_L.x, eng_L.y, eng_L.z)
+add_component_point!(aircraft_component_points, "Right engine", eng_R.x, eng_R.y, eng_R.z)
+
+# Landing gear
+add_component_point!(aircraft_component_points, "Nose LG", x_nLG, 0.0, -fuse.radius)
+add_component_point!(aircraft_component_points, "Main LG", x_mLG, 0.0, -fuse.radius)
+
+# Useful loads
+add_component_point!(aircraft_component_points, "Crew", x_crew_export, 0.0, 0.45 * fuse.radius)
+add_component_point!(aircraft_component_points, "Fuel", x_fuel_export, 0.0, -0.15 * fuse.radius)
+add_component_point!(aircraft_component_points, "Passengers", x_pax_total, 0.0, 0.25 * fuse.radius)
+add_component_point!(aircraft_component_points, "Baggage", x_baggage_export, 0.0, -0.35 * fuse.radius)
+
+# Plot
+aircraft_wb_plot = plot(
+    xlim = (-1, fuse.length + 3),
+    ylim = (-0.6span(wing), 0.6span(wing)),
+    zlim = (-0.35span(wing), 0.35span(wing)),
+    xlabel = "x from nose (m)",
+    ylabel = "y (m)",
+    zlabel = "z (m)",
+    title = "Aircraft Weight & Balance / Stability Layout\nFull-takeoff DATCOM SM = $(round(sm_datcom_from_xcg(full_takeoff_cg.xcg), digits=2))%   |   VLM SM = $(round(sm_vlm_from_xcg(full_takeoff_cg.xcg), digits=2))%",
+    camera = (18, 35),
+    legend = :outerright,
+    size = (1200, 900),
+    grid = true
+)
+
+# Aircraft geometry - make edges darker and thicker
+plot!(
+    aircraft_wb_plot,
+    fuse,
+    alpha = 0.20,
+    linealpha = 1.0,
+    lw = 2.8,
+    lc = :black,
+    label = "Fuselage"
+)
+
+plot!(
+    aircraft_wb_plot,
+    wing,
+    0.4,
+    alpha = 0.28,
+    linealpha = 1.0,
+    lw = 2.8,
+    lc = :black,
+    label = "Wing"
+)
+
+plot!(
+    aircraft_wb_plot,
+    htail,
+    0.4,
+    alpha = 0.35,
+    linealpha = 1.0,
+    lw = 2.8,
+    lc = :black,
+    label = "Horizontal tail"
+)
+
+plot!(
+    aircraft_wb_plot,
+    vtail,
+    0.4,
+    alpha = 0.35,
+    linealpha = 1.0,
+    lw = 2.8,
+    lc = :black,
+    label = "Vertical tail"
+)
+
+# helper
+function add_point3d!(plt, x, y, z, labelname; ms=5)
+    scatter!(plt, [x], [y], [z], markersize = ms, markerstrokewidth = 1.5, label = labelname)
+end
+
+# Show all points
+for i in 1:nrow(aircraft_component_points)
+    add_point3d!(
+        aircraft_wb_plot,
+        aircraft_component_points.x_m[i],
+        aircraft_component_points.y_m[i],
+        aircraft_component_points.z_m[i],
+        aircraft_component_points.Component[i];
+        ms = aircraft_component_points.Component[i] in ["Full takeoff CG", "Neutral point DATCOM", "Neutral point VLM"] ? 7 : 5
+    )
+end
 
         weight_balance_plot = scatter(
             weight_balance_table.x_cg_m,
@@ -2043,6 +2484,15 @@ full_takeoff_cg = cg_export(full_takeoff_items)
         CSV.write(joinpath(outdir, "summary_group_totals.csv"), summary_group_totals)
         CSV.write(joinpath(outdir, "cg_reference_check.csv"), cg_reference_check)
         CSV.write(joinpath(outdir, "potato_points_label_table.csv"), potato_points_label_table)
+        CSV.write(joinpath(outdir, "zone_boarding_summary.csv"), zone_summary)
+CSV.write(joinpath(outdir, "preboarding_loading_trace.csv"), preboarding_trace)
+CSV.write(joinpath(outdir, "zone_boarding_front_trace.csv"), front_trace)
+CSV.write(joinpath(outdir, "zone_boarding_aft_trace.csv"), aft_trace)
+CSV.write(joinpath(outdir, "zone_boarding_recommended_trace.csv"), recommended_trace)
+CSV.write(joinpath(outdir, "zone_boarding_envelope_cases.csv"), boarding_envelope_cases)
+CSV.write(joinpath(outdir, "zone_boarding_potato_envelope.csv"), potato_envelope)
+CSV.write(joinpath(outdir, "zone_boarding_group_summary.csv"), boarding_group_summary)
+CSV.write(joinpath(outdir, "aircraft_component_points.csv"), aircraft_component_points)
 
         open(joinpath(outdir, "aero_derivatives_summary.txt"), "w") do dio
             println(dio, "AERODYNAMIC AND STABILITY DERIVATIVES SUMMARY")
@@ -2062,6 +2512,8 @@ full_takeoff_cg = cg_export(full_takeoff_items)
         savefig(cg_excursion_plot, joinpath(outdir, "cg_excursion_envelope_plot.png"))
         savefig(weight_balance_plot, joinpath(outdir, "weight_balance_component_locations.png"))
         savefig(potato_points_plot, joinpath(outdir, "boarding_potato_points_only.png"))
+        savefig(potato_plot, joinpath(outdir, "zone_boarding_potato_plot.png"))
+savefig(aircraft_wb_plot, joinpath(outdir, "aircraft_weight_balance_3d.png"))
 
         open(joinpath(outdir, "summary.txt"), "w") do io
 
@@ -2173,3 +2625,4 @@ end
 
     # ╔═╡ 402ead4c-b3e9-4153-baee-1048468e6080
     # The End.
+
