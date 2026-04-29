@@ -1,3 +1,0 @@
-Limit,Source,Critical_case,Weight_kg,x_cg_m,CG_percent_MAC,SM_DATCOM_percent,SM_VLM_percent
-Forward CG limit from cases,Boarding group potato envelope,Front-biased boarding - Board group / zone 3,31094.100000000002,15.32368956593016,19.465395627429544,17.379520022555724,16.1467405293957
-Aft CG limit from cases,Boarding group potato envelope,Aft-biased boarding - Board group / zone 4,29834.100000000002,16.327567975303054,48.57436974454531,-11.729454094560042,-12.962233587720066
