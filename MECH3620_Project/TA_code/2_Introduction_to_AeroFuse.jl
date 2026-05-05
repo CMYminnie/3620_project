@@ -78,12 +78,13 @@ md"
 
 # ╔═╡ 291cebcd-d467-4c97-8f91-7685412e81b1
 begin
-l_fuse   = 28.83
-l_nose   = 4.94
-l_tail   = 4.80
-l_cabin  = 18.
-x_a_cabin = l_nose / l_fuse
-x_b_cabin = (l_nose + l_cabin) / l_fuse
+df_outer = 3.21
+            l_fuse   = 32.98
+            l_nose   = 4.91 
+            l_tail   = 8.99 # nose / diameter ratio = 2.8
+            l_cabin  = 18.62
+	   x_a_cabin = l_nose / l_fuse
+            x_b_cabin = (l_nose + l_cabin) / l_fuse
 end
 
 
@@ -91,16 +92,16 @@ end
 # Fuselage definition
 begin		
 fuse = HyperEllipseFuselage(
-    radius = 3.21/2,          # Radius, m
-    length = 28.83,          # Length, m
-    x_a    = x_a_cabin,          # Start of cabin, ratio of length
-    x_b    = x_b_cabin,           # End of cabin, ratio of length
-    c_nose = 1.3,           # Curvature of nose
-    c_rear = 1.2,           # Curvature of rear
-    d_nose = -0.09,          # "Droop" or "rise" of nose, m
-    d_rear = -0.37,           # "Droop" or "rise" of rear, m
-    position = [0.,0.,0.0]   # Set nose at origin, m
-)
+                radius   = df_outer / 2,   # 1.605 m
+                length   = l_fuse,         # 28.83 m
+                x_a      = x_a_cabin,      # start of cabin
+                x_b      = x_b_cabin,      # end of cabin
+                c_nose   = 1.3,
+                c_rear   = 1.2,
+                d_nose   = -0.379, 			#22deg 
+                d_rear   = 0.636, 			#14deg
+                position = [0.0, 0.0, 0.0]
+            )
 end
 
 
@@ -140,6 +141,9 @@ fuse.affine.translation # Coordinates of nose
 # Get coordinates of rear end
 fuse_end = fuse.affine.translation + [ fuse.length, 0., 0. ]
 
+# ╔═╡ d8f824f2-618f-460d-ab0d-a65fb8d52b79
+fuse_end_x = fuse.affine.translation.x + fuse.length # x-coordinate of fuselage
+
 # ╔═╡ a4186bb5-f640-420c-bcac-1988ef3c82ca
 fuse_end.x
 
@@ -160,26 +164,26 @@ md"
 # ╔═╡ 98cb649e-6cdd-452c-b732-6ac4029c4e21
 begin
 	# AIRFOIL PROFILES
-	foil_w_r = read_foil(download("http://airfoiltools.com/airfoil/seligdatfile?airfoil=b737a-il")) # Root
-	foil_w_m = #read_foil(download("http://airfoiltools.com/airfoil/seligdatfile?airfoil=b737b-il")) # Midspan
-	foil_w_t = read_foil(download("http://airfoiltools.com/airfoil/seligdatfile?airfoil=b737c-il")) # Tip
+	foil_w_r = read_foil("C:\\Users\\kychandv\\MECH3620\\3620_project\\Airfoil\\NASA SC(2)-0714.txt") # Root
+	foil_w_m = read_foil("C:\\Users\\kychandv\\MECH3620\\3620_project\\Airfoil\\NASA SC(2)-0714.txt") # Midspan
+	foil_w_t = read_foil("C:\\Users\\kychandv\\MECH3620\\3620_project\\Airfoil\\NASA SC(2)-0714.txt") # Tip
 end
 
 # ╔═╡ b86ad3c5-1699-4a74-b1b4-86be7ceb8c0a
 # Wing
 wing = Wing(
-    foils       = [foil_w_r, foil_w_t], # Airfoils (root to tip)
-    chords      = [3.81, 1.19],          # Chord lengths
-    spans       = [23.9] / 2,               # Span lengths
-    dihedrals   = fill(6, 2),                     # Dihedral angles (deg)
-    sweeps      = fill(35.6, 2),                  # Sweep angles (deg)
-    w_sweep     = 0.,                             # Leading-edge sweep
-    symmetry    = true,                           # Symmetry
+    foils       = [foil_w_r, foil_w_m, foil_w_t], # Airfoils (root to tip)
+    chords      = [4.787, 3.540, 1.565],        # Chord lengths
+    spans       = [4.937, 7.813],             # Span lengths
+    dihedrals   = [5.0, 7.0],                   # Dihedral angles (deg)
+    sweeps      = [30.0, 30.0],                # Sweep angles (deg)
+    w_sweep     = 0.,                           # Leading-edge sweep
+    symmetry    = true,                         # Symmetry
 
 	# Orientation
-    angle       = 3,       						  # Incidence angle (deg)
-    axis        = [0, 1, 0], 					  # Axis of rotation, x-axis
-    position    = [0.35*fuse.length, 0., -2.5]
+    angle       = 5,       # Incidence angle (deg)
+    axis        = [0, 1, 0], # Axis of rotation, x-axis
+    position    = [10, 0.0, -1.0]
 )
 
 # ╔═╡ e2955349-67f1-4a3b-8f56-628f248d00fb
@@ -270,21 +274,21 @@ con_foil = control_surface(naca4(0,0,1,2), hinge = 0.75, angle = -10.)
 
 # ╔═╡ d4970954-a888-4f28-8b61-bdc0a2a06a93
 htail = WingSection(
-    area        = 101,  			# Area (m²). HOW DO YOU DETERMINE THIS?
-    aspect      = 4.2,  			# Aspect ratio
-    taper       = 0.4,  			# Taper ratio
-    dihedral    = 7.,   			# Dihedral angle (deg)
-    sweep       = 35.,  			# Sweep angle (deg)
-    w_sweep     = 0.,   			# Leading-edge sweep
-    root_foil   = con_foil, 		# Root airfoil
-	tip_foil    = con_foil, 		# Tip airfoil
-    symmetry    = true,
-
-    # Orientation
-    angle       = 5,  			# Incidence angle (deg). HOW DO YOU DETERMINE THIS?
-    axis        = [0., 1., 0.], # Axis of rotation, y-axis
-    position    = fuse_end - [ 10., 0., 0.], # HOW DO YOU DETERMINE THIS?
-)
+            area        = 16.5,  # HOW DO YOU DETERMINE THIS?--> Area~12.5-25% S_wing
+            aspect      = 7.1,  
+            taper       = 0.25,  
+            dihedral    = 0.,   
+            sweep       = 30.,  
+            w_sweep     = 0.,   # Leading-edge sweep
+            root_foil   = con_foil, 		# Root airfoil
+            tip_foil    = con_foil, 		# Tip airfoil
+            symmetry    = true,
+            
+            ## Orientation
+            angle       = -3,           # Incidence angle (deg), HOW DO YOU DETERMINE THIS?
+            axis        = [0., 1., 0.], # Axis of rotation, y-axis
+            position    = [ fuse_end_x - 4.0, 0., 0.], # HOW DO YOU DETERMINE THIS?
+        );
 
 # ╔═╡ a106972a-b410-4d3a-b915-67f69e26b996
 camera_angles3 = md"""
@@ -330,20 +334,19 @@ md"
 "
 
 # ╔═╡ de2725a2-4053-4fa2-9a0d-1419b8692edd
-vtail = WingSection(
-    area        = 56.1, 			# Area (m²). # HOW DO YOU DETERMINE THIS?
-    aspect      = 1.5,  			# Aspect ratio
-    taper       = 0.4,  			# Taper ratio
-    sweep       = 44.4, 			# Sweep angle (deg)
-    w_sweep     = 0.,   			# Leading-edge sweep
-    root_foil   = naca4(0,0,0,9), 	# Root airfoil
-	tip_foil    = naca4(0,0,0,9), 	# Tip airfoil
-
-    # Orientation
-    angle       = 90.,       # To make it vertical
-    axis        = [1, 0, 0], # Axis of rotation, x-axis
-    position    = htail.affine.translation - [2.,0.,-1.] # HOW DO YOU DETERMINE THIS?
-) # Not a symmetric surface
+    vtail = WingSection(
+            area        = 10, # HOW DO YOU DETERMINE THIS?
+            aspect      = 3.12,
+            taper       = 0.25,
+            sweep       = 30,
+            w_sweep     = 0.,   # Leading-edge sweep
+            root_foil   = naca4(0,0,1,2),
+            
+            ## Orientation
+            angle       = 90.,       # To make it vertical
+            axis        = [1, 0, 0], # Axis of rotation, x-axis
+            position    = htail.affine.translation + [0.082,0.,-0.01] # HOW DO YOU DETERMINE THIS?
+        ); # Not a symmetric surface
 
 # ╔═╡ cafe9f2b-82ae-40de-940d-aaa8b38813e5
 camera_angles4 = md"""
@@ -2750,6 +2753,7 @@ version = "1.13.0+0"
 # ╟─0204dbf4-6214-411b-ab08-8832fc029ce4
 # ╠═0cc52de0-a28e-4b52-8be2-0dce6a101e66
 # ╠═2c1b7012-4274-4461-a851-06b9d4d4f7bf
+# ╠═d8f824f2-618f-460d-ab0d-a65fb8d52b79
 # ╠═a4186bb5-f640-420c-bcac-1988ef3c82ca
 # ╠═db1d4561-3525-4f3a-89fb-41ce98500610
 # ╟─01847722-9de8-4671-bbb8-e1d56c9815dd

@@ -255,8 +255,8 @@ V_h = S_h / S_w * (mac_h.x - mac_w.x) / c_w
 md"#### Vertical Tail"
 
 # ╔═╡ 72c1cb62-58da-40c8-a5ff-5f9325360fe8
-vtail = WingSection(
-            area        = 6.183, # HOW DO YOU DETERMINE THIS?
+    vtail = WingSection(
+            area        = 10, # HOW DO YOU DETERMINE THIS?
             aspect      = 3.12,
             taper       = 0.25,
             sweep       = 30,
@@ -268,6 +268,7 @@ vtail = WingSection(
             axis        = [1, 0, 0], # Axis of rotation, x-axis
             position    = htail.affine.translation + [0.082,0.,-0.01] # HOW DO YOU DETERMINE THIS?
         ); # Not a symmetric surface
+
 
 # ╔═╡ 02dcefce-3b27-441f-a76b-9dba2c7b2b72
 b_v = span(vtail)
@@ -668,8 +669,8 @@ md"# Plot Definition"
 begin
 	φ_s 			= @bind φ Slider(0:1e-2:90, default = 15)
 	ψ_s 			= @bind ψ Slider(0:1e-2:90, default = 30)
-	aero_flag 		= @bind aero CheckBox(default = true)
-	stab_flag 		= @bind stab CheckBox(default = true)
+	aero_flag 		= @bind aero CheckBox(default = false)
+	stab_flag 		= @bind stab CheckBox(default = false)
 	weights_flag 	= @bind weights CheckBox(default = false)
 	strm_flag 		= @bind streams CheckBox(default = false)
 end;

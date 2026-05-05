@@ -152,7 +152,7 @@ begin
 	# Aircraft quantities
 	S_ref 	  	= 81.0	    # Reference area, m²
 	chord 	  	= 3.43 		# Reference chord length, m
-	CL_alpha  	= 6.47018		# Lift curve slope, /rad (USE DATCOM OR AEROFUSE)
+	CL_alpha  	=  5.61682 		# Lift curve slope, /rad (USE DATCOM OR AEROFUSE)
 	CL_max 	  	= 1.45  		# Maximum CL (flaps retracted)
 	CL_min 	  	= -0.841		# Minimum CL (flaps retracted)	#By xfoil
 
@@ -228,6 +228,7 @@ The minimum load factor $n_\min$ should not be less than $-0.4 \times n_{\max}$.
 
 # ╔═╡ abc41da0-5c37-47a9-9801-627354c2e5c8
 load_factor_max(W) = min(2.1 + 24000 / (W + 10000), 3.8) # Maximum load factor limit
+#load_factor_max(W) = 2.5
 
 # ╔═╡ a7a4e58c-abed-416a-902a-026f582a6963
 num = 100 # Number of points for plotting lines

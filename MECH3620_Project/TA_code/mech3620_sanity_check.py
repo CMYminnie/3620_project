@@ -12,9 +12,9 @@ FT_TO_M = 0.3048
 KTS_TO_MPS = 0.514444
 
 aero_data = {
-    'AR_wing': 9.0,
-    'e_clean': 0.82,
-    'CD0_clean': 0.022
+    'AR_wing': 8,
+    'e_clean': 0.85,
+    'CD0_clean': 0.01065
 }
 
 # ===========================
@@ -65,8 +65,8 @@ def calculate_time_to_climb(W_kg, S_m2, T_sl_total_N, aero_data, target_alt_ft=3
         
         # Check Mach Limit
         mach = v_tas_mps / v_sound
-        if mach > 0.74:
-            mach = 0.74
+        if mach > 0.78:
+            mach = 0.78
             v_tas_mps = mach * v_sound
             
         # 3. Calculate Drag
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     # )
 
     # W_takeoff = weight_breakdown['total']
-    W_takeoff = 32950.32156927638  # kg
+    W_takeoff = 32113.5  # kg
 
     # 2. Perform Constraint Analysis
     # ws_range = np.linspace(1000, 6000, 500) 
@@ -124,30 +124,29 @@ if __name__ == "__main__":
 
     # The limiting Wing Loading is determined by Landing
     # WS_limit = design_points['dp1']['W/S']
-    WS_limit = 3836.934834223454
-
+    WS_limit = 4069.4
     # TW_req_takeoff = design_points['dp1']['T/W']
     # TW_req_climb = design_points['dp2']['T/W']
     # TW_req_cruise = design_points['dp3']['T/W']
-    TW_req_takeoff = 0.312003020362084
-    TW_req_climb = 0.30070608000941507
-    TW_req_cruise = 0.30070608000941507
+    # TW_req_takeoff = 0.312003020362084
+    # TW_req_climb = 0.30070608000941507
+    # TW_req_cruise = 0.30070608000941507
 
     # Select the highest T/W required to satisfy ALL constraints
-    TW_selected = max(TW_req_takeoff, TW_req_climb, TW_req_cruise)
+    TW_selected =0.284  # This is the T/W required for takeoff, which is the highest among the three constraints
 
     # Identify which constraint is sizing the engine
-    if TW_selected == TW_req_takeoff:
-        sizing_case = "Takeoff Field Length"
-    elif TW_selected == TW_req_climb:
-        sizing_case = "Climb Gradient (OEI)"
-    else:
-        sizing_case = "Cruise Speed"
+    # if TW_selected == TW_req_takeoff:
+    #     sizing_case = "Takeoff Field Length"
+    # elif TW_selected == TW_req_climb:
+    #     sizing_case = "Climb Gradient (OEI)"
+    # else:
+    #     sizing_case = "Cruise Speed"
 
     WS_selected = WS_limit
 
     # 3. Calculate Geometry (simplified)
-    AR_wing = 9.0
+    AR_wing = 8
     S_wing_required = W_takeoff * g / WS_selected
     b_wing_required = np.sqrt(S_wing_required * AR_wing)
     c_wing_required = S_wing_required / b_wing_required
@@ -160,8 +159,8 @@ if __name__ == "__main__":
 
     # 5. Output
     print(f'W_takeoff = {W_takeoff:.2f} kg')
-    print(f'WS_selected = {WS_selected:.2f} N/m**2 (Driven by Landing)')
-    print(f'TW_selected = {TW_selected:.4f} (Driven by {sizing_case})')
+    print(f'WS_selected = {WS_selected:.2f} N/m**2')
+    print(f'TW_selected = {TW_selected:.4f} )')
     print(f'Thrust required per engine = {T_sl_total_N / 2 / 1000.0:.2f} kN')
     print(f'Required wing area = {S_wing_required:.2f} m**2')
     print(f'Required wing span = {b_wing_required:.2f} m')
