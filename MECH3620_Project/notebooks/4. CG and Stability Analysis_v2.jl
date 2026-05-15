@@ -29,6 +29,14 @@ end
 
   
 
+# ╔═╡ 5fa022c8-a0e0-48c1-882c-60c3d93df9a0
+
+    begin
+        using CSV
+        using Dates
+        using ZipFile
+	end
+
 # ╔═╡ 07559c60-063b-11f0-1a5c-37ed11f4209e
     md"""
     # Weight & Balance with Stability Analysis
@@ -43,6 +51,15 @@ end
 
   
 
+# ╔═╡ 1238b8f3-693c-4801-ba25-5036f070dda4
+m_to_ft = 3.280839895
+
+# ╔═╡ 183e50c8-fc26-4256-b4e6-e5f970339f38
+kg_to_lb = 2.20462262185
+
+# ╔═╡ 12d4460a-e2fc-453c-85b0-2b3e6fafd223
+lb_ft2_to_kg_m2 = 4.88243
+
 # ╔═╡ 17a7b231-19fb-455b-a93a-687251df87fb
     begin
         ϕ_s1 			= @bind ϕ1 Slider(0:1e-2:90, default = 15)
@@ -54,6 +71,29 @@ end
     end
 
   
+
+# ╔═╡ caab7a42-8f3e-4d15-90e6-b4a9d58c16bd
+begin
+	function plot_wingload(wing_loads)
+    plt_CD = plot(wing_loads[:,1], wing_loads[:,2], ylabel = "CDi", label = "")
+    plt_CY = plot(wing_loads[:,1], wing_loads[:,3], ylabel = "CY", label = "")
+    plt_CL = begin 
+        plot(wing_loads[:,1], wing_loads[:,4], ylabel = "CL", label = "") # CL
+        plot!(wing_loads[:,1], wing_loads[:,5], label = "CL_norm") # CL normalized
+    end
+
+    # Combine plots
+    plot(plt_CD, plt_CY, plt_CL, layout = (3,1), xlabel = "y")
+end
+end
+
+
+# ╔═╡ 1dea72b9-6ee6-431c-91b1-a43525f19fa8
+function plot_aero(alphas, CLs, CDis)
+    plot1 = plot(alphas, CLs, ylabel = "CL", xlabel = "α", label = "")
+    plot2 = plot(CDis, CLs, label = "", xlabel = "CDi", ylabel = "CL", title  = "Drag Polar")
+    plot(plot1, plot2, layout = (2, 1)) 
+end
 
 # ╔═╡ d6b41872-bd8e-45d1-baa2-fa0cc36b6177
     md"""### Wing
@@ -71,27 +111,30 @@ end
   
 
 # ╔═╡ a76599c7-563d-4647-8fda-36869d07ff71
-    plot(foil_w_root, aspect_ratio = 1)
-
-  
+    plot(foil_w_root, aspect_ratio = 1)  
 
 # ╔═╡ 87f54aa2-861a-44f7-b331-1198f522d1e4
     md"""Here, we'll define a two-section wing planform that we'll use in this notebook."""
 
   
 
+# ╔═╡ 7c5101d2-29fd-4bcc-85f9-4747819b1bec
+
+
 # ╔═╡ c8c3daf0-4e63-49b6-bc07-6ba37f817c5e
     wing = Wing(
         foils       = [foil_w_root, foil_w_root, foil_w_tip],              # Airfoils
-        chords 		= [4.787, 3.540, 1.565],  	# Chord lengths 
-        spans       = [4.937, 7.813],
-        dihedrals   = [5.0, 7.0],               # Dihedral angles (deg)
-        sweeps      = [30.0, 30.0],             # Sweep angles (deg )
-        w_sweep     = 0.0,                      # Leading-edge sweep
-        position    = [11, 0.0, -1.0],      	 # HOW DO YOU DETERMINE THIS?
-        symmetry    = true,                      # Symmetry
-        angle       = 5,
-        axis        = [0, 1, 0]
+        chords      = [5.65, (5.65+0.5)/2 , 0.5],        # Chord lengths
+	    spans       = [5.3, 7.2],             # Span lengths
+	    dihedrals   = [5.0, 5.0],                   # Dihedral angles (deg)
+	    sweeps      = [25.0, 25.0],                # Sweep angles (deg)
+	    w_sweep     = 0,                           # Leading-edge sweep
+	    symmetry    = true,                         # Symmetry
+	
+		# Orientation
+	    angle       = 1,       # Incidence angle (deg)
+	    axis        = [0, 1, 0], # Axis of rotation, x-axis
+	    position    = [10, 0.0, -1.0]
     )
 
   
@@ -107,8 +150,6 @@ end
 # ╔═╡ 6131d42a-38c5-4af5-b065-ba022852146c
     sweeps(wing, 0.25)  # Quarter-chord sweep angles
 
-  
-
 # ╔═╡ 618ba8c3-8d46-4ef3-a038-5ecdb21eab03
     md"The following quantities will be useful for evaluation of the static stability."
 
@@ -123,42 +164,29 @@ end
         c_w = mean_aerodynamic_chord(wing)
     end;
 
-  
+# ╔═╡ 95f36a1c-57a7-4bbe-ac75-55a1c152e4af
+# savefig(wingloading, "wingload.pdf")
 
 # ╔═╡ 38c60ab8-cf05-4051-a5a8-e35ffae7e50c
     md"Let's compute the mean aerodynamic center, which is at 25% of the mean aerodynamic chord by default. Go to the appendix in this notebook to see how this is calculated!."
 
-  
-
 # ╔═╡ 335a090d-a50c-4f9c-a23a-a32b8ff6de34
     mac25_w = mean_aerodynamic_center(wing, 0.25)
-
-  
 
 # ╔═╡ 9d59c6d6-0e2e-40be-aedb-2ea21f6639a8
     mac25_w.x 	# x-coordinate of mean aerodynamic center at 25%
 
-  
-
 # ╔═╡ 4b84579b-3a9f-43e8-88bc-879cd950f657
     mac25_w.y 	# y-coordinate of mean aerodynamic center at 25%
-
-  
 
 # ╔═╡ 3e31ace1-1073-49b8-936b-1d5da789b895
     md"You can also use this function to compute the centroid at various chordwise ratios."
 
-  
-
 # ╔═╡ 5baf5f31-eba8-42eb-9d62-96ce53c7cac8
     mac40_w = mean_aerodynamic_center(wing, 0.40) # at 40% of the chord length
 
-  
-
 # ╔═╡ 12d6baf4-c15b-46e8-8be3-0cc52fc9267b
     mac40_w.x 	# x-coordinate of mean aerodynamic center at 40%
-
-  
 
 # ╔═╡ c7d034c8-d72f-461e-93e6-603a9c8f4c62
     md"""
@@ -178,19 +206,14 @@ end
 # ╔═╡ fb46cb05-f84c-4554-93cb-5491ebdc9eb0
     wing_coo = coordinates(wing) # Get leading and trailing edge coordinates
 
-  
-
 # ╔═╡ d90d5231-8680-4d24-ac39-be9e2d532c10
     wing_coo[1,:] # Leading edge coordinates
-
-  
 
 # ╔═╡ 25f56a3b-b8f8-4304-969d-7a4e49c338ea
     begin 
         eng_L = wing_coo[1,2] - [1, 0., 0.] # Left engine, at mid-section leading edge
         eng_R = wing_coo[1,4] - [1, 0., 0.] # Right engine, at mid-section leading edge
     end;
-
   
 
 # ╔═╡ 9be9d09b-a563-49a7-a6c8-72adcbf3a840
@@ -222,40 +245,26 @@ end
             )
         end
 
-  
-
 # ╔═╡ 4b754590-3137-4400-a1a9-bd99135aee4d
     ts = 0:0.01:1 # Distribution of each section for surface area and volume computation
-
-  
 
 # ╔═╡ ef4431d6-5113-4e77-b549-62b0f6444a39
     S_f = wetted_area(fuse, ts) # Surface area, m²
 
-  
-
 # ╔═╡ 532e2bf5-2ab9-4efb-84a3-3ab16b6ea81b
     V_f = volume(fuse, ts) # Volume, m³
-
-  
 
 # ╔═╡ 2b098bef-934b-40fa-8da5-f08d032aa0e4
     fuse_end_x = fuse.affine.translation.x + fuse.length # x-coordinate of fuselage end
 
-  
-
 # ╔═╡ 7f9790ab-a1af-4de3-8375-44d11d784bf7
     md"### Visualization"
-
-  
 
 # ╔═╡ 04f96ffb-aa30-4bf5-918f-ba1d8528768f
     camera_angles1 = md"""
     ϕ: $(ϕ_s1)
     ψ: $(ψ_s1)
     """
-
-  
 
 # ╔═╡ c559cb5f-a016-43a0-8596-89f006245b4f
     begin
@@ -306,7 +315,7 @@ end
             ## Orientation
             angle       = -3,           # Incidence angle (deg), HOW DO YOU DETERMINE THIS?
             axis        = [0., 1., 0.], # Axis of rotation, y-axis
-            position    = [ fuse_end_x - 4.0, 0., 0.], # HOW DO YOU DETERMINE THIS?
+            position    = [ fuse_end_x - 5.5, 0., 0.], # HOW DO YOU DETERMINE THIS?
         );
 
 
@@ -373,8 +382,6 @@ begin
             position    = htail.affine.translation + [0.082,0.,-0.01] # HOW DO YOU DETERMINE THIS?
         ); # Not a symmetric surface
 
-  
-
 # ╔═╡ 0c13b5ef-8a2e-4cb9-a246-69f66db9b92f
     chords(vtail)
 
@@ -386,8 +393,6 @@ begin
         mac25_v = mean_aerodynamic_center(vtail, 0.25)
         mac40_v = mean_aerodynamic_center(vtail, 0.4)
     end;
-
-  
 
 # ╔═╡ 1be5a6b2-994a-44b0-8b13-5bbb1fffecd9
     md"""Recall the tail volume coefficient:
@@ -482,12 +487,8 @@ begin
     # ============================================================
     # Reference quantities
     # ============================================================
-    TOGW = 33614.1          # Takeoff gross weight, kg
+    TOGW = 32286.7            # Takeoff gross weight, kg
     W_engine = 1179.0       # GE CF34-8E dry weight per engine, kg
-
-    # Unit conversions
-    kg_to_lb = 2.20462262185
-    lb_ft2_to_kg_m2 = 4.88243
 
     # ============================================================
     # Ultimate load factor
@@ -511,8 +512,6 @@ end;
 # ╔═╡ a3924235-a17d-463a-b1f4-4bd8f715fe5f
     M_w = (10 * lb_ft2_to_kg_m2 * S_w) * mac40_w.x # Moment generated by wing weight
 
-  
-
 # ╔═╡ 5b12700f-a0ad-4f29-afc7-649ce6c1dfc4
     md"We can express the landing gear, fuselage, and all-other component centroids  in terms of the fuselage length and its origin, the nose in this case."
 
@@ -520,11 +519,13 @@ end;
 
 # ╔═╡ ae708986-6529-4069-904e-60858905f319
     begin
-        x_nose 	= fuse.affine.translation.x 	# Nose location 
-        x_fuse 	= x_nose + fuse.length / 2   	# Fuselage centroid (50% L_f)
-        x_other = x_nose + fuse.length / 2 		# All-other component centroid (50% L_f)
-        x_nLG  	= x_nose + 0.15 * fuse.length  	# Nose landing gear centroid (15% L_f)
-        x_mLG 	= x_nose + 0.5 * fuse.length  	# Main landing gear centroid (50% L_f)
+        x_nose 	= fuse.affine.translation.x
+        x_fuse 	= x_nose + fuse.length / 2
+        x_other = x_nose + fuse.length / 2
+
+        # Final landing gear longitudinal positions from landing gear sizing
+        x_nLG  	= 4.5
+        x_mLG 	= 17.8
     end;
 
   
@@ -556,7 +557,7 @@ end;
 begin
     fuel_fraction_final = 0.28658
 
-    W_payload_final = 7350.0
+    W_payload_final = 8210.0
     W_crew_final = 360.0
     W_fuel_final = fuel_fraction_final * TOGW
 
@@ -607,7 +608,7 @@ if airframe_scale <= 0
                 (w * airframe_scale, x)
             end
         end
-        for (name, wx) in weight_position
+        for (name, wx) in weight_position_raw
     )
 end
 
@@ -766,8 +767,6 @@ end
         return ∂ϵ_∂α
     end
 
-  
-
 # ╔═╡ 23d5c748-d77c-4252-add0-deade4f4a416
     function lift_slope_tail_DATCOM(AR_h, eta_h, sweep_LE_h, M, CL_α_w, AR_w)
         CL_α_0 = lift_slope_DATCOM(AR_h, eta_h, sweep_LE_h, M) # DATCOM, ∂CL/∂α_0
@@ -776,17 +775,11 @@ end
         return CL_α_0 * corr # corrected lift-curve slope
     end
 
-  
-
 # ╔═╡ 0a763717-9f1b-4c6d-98ed-95029d01f509
     eta_h = 0.88 # Horizontal stability aerodynamic efficiency factor (for DATCOM)
 
-  
-
 # ╔═╡ 40e02dbd-fcd4-4297-ab3b-bc5b3d71717a
     CL_α_h = lift_slope_tail_DATCOM(AR_h, eta_h, lambda_h, M, CL_α_w, AR_w) # 1/radians
-
-  
 
 # ╔═╡ dff70e54-4ea9-4edf-a3ca-2f7c765b624f
     md""" ##### Fuselage Contribution
@@ -823,29 +816,20 @@ end
         fuse_Cm_CL = 2 * vol_fuse / (S_w * c_bar * CL_α_w)
     end;
 
-  
-
 # ╔═╡ e74c66b7-287d-46ed-9e5b-a241fe06055a
     Cm_f_CL = fuse_Cm_CL(V_f, S_w, c_w, CL_α_w)
-
-  
 
 # ╔═╡ 62df7c3a-4667-41a6-98b3-aa330519a41a
     md"##### Static Margin
     Now we can estimate the neutral point of the aircraft.
     "
 
-  
-
 # ╔═╡ 23db0b3d-f844-4889-8386-79126a19093b
     x_np_by_c = neutral_point(V_h, CL_α_h, CL_α_w, Cm_f_CL) # (xₙₚ/c̄)
 
-  
 
 # ╔═╡ e07d5942-bb5e-41cc-9deb-369c25ef6c2e
     x_np = mac25_w.x + x_np_by_c * c_w 		# Translate from the wing MAC
-
-  
 
 # ╔═╡ 0c8b15b1-d848-47f3-ab7d-bd8f254970b0
     md"So we obtain the static margin as:"
@@ -855,17 +839,11 @@ end
 # ╔═╡ bf08b856-d9d8-4fdc-876e-9950dc549f6e
     SM = (x_np - x_cg) / c_w
 
-  
-
 # ╔═╡ 133329d8-cd89-46ab-8691-81cbfeb72649
     SM * 100 # in percentage
 
-  
-
 # ╔═╡ f71f0b50-161e-4ca3-bbd7-73a8691ee2b6
-    md"### Visualization"
-
-  
+    md"### Visualization"  
 
 # ╔═╡ 7a8932d4-1470-47f1-a598-192ccfa66d94
     begin 
@@ -876,15 +854,12 @@ end
         r_nLG = [x_nLG, 0., -fuse.radius] # Nose landing gear
     end
 
-  
 
 # ╔═╡ 929142bd-0ab7-4c89-b3f1-e0bc652caa09
     camera_angles2 = md"""
     ϕ: $(ϕ_s2)
     ψ: $(ψ_s2)
     """
-
-  
 
 # ╔═╡ dc65ebaa-cd46-4763-bf96-7210f6bc620b
     begin
@@ -943,22 +918,15 @@ end
         span_spacing = fill(Uniform(), 4) # Number of spacings = number of spanwise stations (including symmetry)
     )
 
-  
-
 # ╔═╡ e9318a7c-125c-4db1-a220-eb0d6de00212
     htail_mesh = WingMesh(htail, [10], 8)
-
-  
 
 # ╔═╡ 5f7738d8-367c-40fc-87f0-f6732623392d
     vtail_mesh = WingMesh(vtail, [8], 6)
 
-  
-
 # ╔═╡ aa1ac62e-244d-4fc3-8543-0db8104e740a
     md"Now we define the aircraft, freestream and reference values."
 
-  
 
 # ╔═╡ d3dc7232-ab8b-408d-a8d4-d1cf443afe52
     ac = ComponentVector(
@@ -967,15 +935,12 @@ end
         vtail = make_horseshoes(vtail_mesh)
     );
 
-  
 
 # ╔═╡ 777ee0ce-64fa-4dfe-91f1-ca7d8f61a7a4
     fs = Freestream(
         alpha = 0.0, # HOW DO YOU CHOOSE THIS?
         beta = 0.0,
     );
-
-  
 
 # ╔═╡ 41a1dda8-275e-4090-bcd8-5670b4d005a7
     refs = References(
@@ -992,20 +957,29 @@ end
 # ╔═╡ 8f269b3f-90e8-4cd1-a05a-4fbc63de1cdb
     md"Now, let's run the VLM analysis."
 
-  
-
 # ╔═╡ 4e2cf07e-a5c6-464d-ba5e-c3ee0c7098e3
     sys = solve_case(ac, fs, refs,
             name = "Boing",
             compressible = true,
         )
 
-  
+# ╔═╡ d30fcc47-3a66-40c9-9aac-280f0dfc2d7b
+print_coefficients(sys, components = true)
+
+# ╔═╡ a4ccffb3-f491-439f-ba13-9f17dbdd6c69
+	CFs, CMs = surface_coefficients(sys; axes = Wind())
+
+# ╔═╡ 47aac563-9736-4851-b142-38bd6fc0702a
+wing_loads = spanwise_loading(wing_mesh, refs, CFs.wing, sys.circulations.wing)
+
+# ╔═╡ d5ba1088-8a31-4d68-bfa0-ef67547932ed
+wingloading = plot_wingload(wing_loads)
+
+# ╔═╡ 74268c4b-26cd-4dc8-9f5c-39d504e9bf84
+#savefig(aero_polar_plot, "aero_polar.pdf")
 
 # ╔═╡ 26d51540-49e4-44b3-af4d-62478d6327e2
     md"## Angle of Attack Variation"
-
-  
 
 # ╔═╡ 41028657-878a-4f99-83dc-060a8b95a78a
     function solve_alpha(ac, α, M, refs, compressible = false)
@@ -1033,10 +1007,17 @@ end
 
   
 
+# ╔═╡ 486085a8-c02d-402d-9627-d78b352662a8
+CLs  = [nearfield(sys).CZ for sys in vlms_M1]
+
+# ╔═╡ 9cab4569-b880-4e48-a6bb-9801aae859ed
+CDis = [nearfield(sys).CX for sys in vlms_M1]
+
+# ╔═╡ 21067721-5d44-41f1-afcb-f03d2f7eab85
+aero_polar_plot = plot_aero(alphas, CLs, CDis)
+
 # ╔═╡ cc237b8a-f912-46b9-8ea1-b68a04bb322c
     vlms_M2 = map(alpha -> solve_alpha(ac, alpha, M2, refs), alphas); # Evaluate for range of angles at other Mach number
-
-  
 
 # ╔═╡ ce4faad3-c7d1-4fa1-b907-305e1ffb0206
     begin
@@ -1070,8 +1051,6 @@ end
         
         plot!(df_M2[!,"CL"], df_M2[!,"Cm"], xlabel = "CL", ylabel = "Cm", label = "M = $(mach_number(vlms_M2[1].reference))") # Subsonic condition
     end
-
-  
 
 # ╔═╡ 04b8750c-87ce-4063-a8d5-388f2e08aaa6
     # savefig(plt_Cm_CL, "Cm_CL_curve.png")
@@ -1135,17 +1114,11 @@ end
         Compare the lift curve slopes estimated from the vortex lattice method compared to the DATCOM formula predictions!
     """
 
-  
-
 # ╔═╡ 20c9112d-84db-42e1-aa33-5bf9f6ea016b
     CL_α_w 	# DATCOM lift curve slope for the wing
 
-  
-
 # ╔═╡ 3d38e9d2-7319-4b4b-ab7c-bcb3d475d17f
     CL_α_h  # DATCOM lift curve slope for the horizontal tail
-
-  
 
 # ╔═╡ 65efafc2-3f58-40ac-9ecf-81bf0b133205
     md"## Stability Analysis
@@ -1156,12 +1129,8 @@ end
     ```
     "
 
-  
-
 # ╔═╡ 4b235b39-43c0-44db-afe0-29306e59e50f
     x_cp = -refs.chord * ac_dvs.Cm / ac_dvs.CZ # Center of pressure
-
-  
 
 # ╔═╡ de870ed8-944f-438e-8cf8-d951d96797d9
     md"""
@@ -1182,7 +1151,7 @@ end
     # Use Cm-CL slope directly from VLM alpha sweep
     # This follows lecture alternative form:
     # x_np/c = -(dCm/dCL + dCmf/dCL)
-
+begin
     fit_mask = abs.(df_M2.al) .<= 4
     df_fit = df_M2[fit_mask, :]
 
@@ -1195,12 +1164,7 @@ end
     Cm_fuse_CL = fuse_Cm_CL(V_f, S_w, c_w, CLα_wing_VLM)
 
     x_np_vlm = refs.location[1] - refs.chord * (dCm_dCL_VLM + Cm_fuse_CL)
-
-  
-
-# ╔═╡ 7fbb061f-a9ef-47bd-9989-37119e4e6b88
-
-
+end
   
 
 # ╔═╡ 88c47f03-fa83-497a-8738-a4a0f47cf966
@@ -1245,17 +1209,11 @@ end
 # ╔═╡ 45cd25ad-fa8c-44d3-a3d1-1a9043dbff03
     print_derivatives(dvs.aircraft; farfield = true) # Example of printing
 
-  
-
 # ╔═╡ 143d4eb1-3e19-4ca8-8bea-e0d35bf69761
     @bind plot_vlm CheckBox(default = false)
 
-  
-
 # ╔═╡ 17c59c56-d2aa-44d9-8658-bd323b7d50b7
     @bind plot_streamlines CheckBox(default = false)
-
-  
 
 # ╔═╡ a9cc0876-a907-4b39-bf8b-5c1c8f92258a
     camera_angles3 = md"""
@@ -1310,7 +1268,7 @@ end
 
   
 
-# ╔═╡ cbdf5265-1c2b-4bbc-a458-18fba0c9d376
+# ╔═╡ 844c5f37-7109-4870-9d36-2ed386157caa
     md"""## Mean Aerodynamic Chord Calculation
 
     ![](https://raw.githubusercontent.com/HKUST-OCTAD-LAB/MECH3620Materials/main/pics/WingParams.svg)
@@ -1324,47 +1282,57 @@ end
     ```
     """
 
+# ╔═╡ 5993702f-5727-4adf-8f1a-ad5f35f9f811
+ x_LEMAC_export = mac25_w.x - 0.25 * c_w
 
-    begin
-        using CSV
-        using Dates
-        using ZipFile
+# ╔═╡ d5c4f9f1-6ddc-4b33-bccd-3ec6b4936eef
+begin
+	function pctMAC_export(x)
+	    return 100 * (x - x_LEMAC_export) / c_w
+	end
+end
 
-        x_LEMAC_export = mac25_w.x - 0.25 * c_w
+# ╔═╡ d49d263a-5d97-4a0e-9667-4c1e03055a0a
+begin
+function cg_export(items)
+    W = sum(w for (w, x) in values(items))
+    M = sum(w * x for (w, x) in values(items))
+    xcg = M / W
+    return (W = W, xcg = xcg, pctMAC = pctMAC_export(xcg))
+end
+end
 
-        function pctMAC_export(x)
-            return 100 * (x - x_LEMAC_export) / c_w
-        end
-
-        function cg_export(items)
-            W = sum(w for (w, x) in values(items))
-            M = sum(w * x for (w, x) in values(items))
-            xcg = M / W
-            return (W = W, xcg = xcg, pctMAC = pctMAC_export(xcg))
-        end
-
-        # Existing neutral points from your file
+# ╔═╡ 85b9976b-2447-4118-9150-439266ec3d8c
+# ------------------------------------------------------------
+# Existing neutral points
+# ------------------------------------------------------------
+begin
         x_np_DATCOM_export = x_np
         x_np_VLM_export = r_np_vlm.x
+end
 
-        # ============================================================
-        # 1) ORIGINAL CG + SM RESULTS FROM YOUR FILE
-        # ============================================================
+# ╔═╡ 00a4994a-9ebb-4623-a4a5-cdce3276d05e
+# ============================================================
+# 1) ORIGINAL CG + SM RESULTS FROM YOUR FILE
+# ============================================================
+begin
+original_results = DataFrame(
+    Method = ["DATCOM", "VLM"],
+    x_cg_m = [x_cg, x_cg],
+    CG_percent_MAC = [pctMAC_export(x_cg), pctMAC_export(x_cg)],
+    x_np_m = [x_np_DATCOM_export, x_np_VLM_export],
+    Static_margin_percent = [100 * SM, 100 * SM_VLM],
+    MAC_m = [c_w, c_w],
+    x_LEMAC_m = [x_LEMAC_export, x_LEMAC_export]
+)
+end
 
-        original_results = DataFrame(
-            Method = ["DATCOM", "VLM"],
-            x_cg_m = [x_cg, x_cg],
-            CG_percent_MAC = [pctMAC_export(x_cg), pctMAC_export(x_cg)],
-            x_np_m = [x_np_DATCOM_export, x_np_VLM_export],
-            Static_margin_percent = [100 * SM, 100 * SM_VLM],
-            MAC_m = [c_w, c_w],
-            x_LEMAC_m = [x_LEMAC_export, x_LEMAC_export]
-        )
+# ╔═╡ 43b66825-3186-470d-baa4-b9e48badc5ac
 
 # ============================================================
 # 2) WEIGHT & BALANCE LOADING CASES, MISSION CG, AND PLOTS
 # ============================================================
-
+begin
 # ------------------------------------------------------------
 # Useful loads based on project assumptions
 # ------------------------------------------------------------
@@ -1381,46 +1349,28 @@ x_crew_export = 0.55 * l_nose
 W_baggage_export = n_pax * W_bag_each
 x_baggage_export = l_nose + 0.70 * l_cabin
 
-# Passenger groups for CG calculations
-n_pax_groups = 14
-pax_per_group = fill(n_pax ÷ n_pax_groups, n_pax_groups)
-for i in 1:(n_pax - sum(pax_per_group))
-    pax_per_group[i] += 1
-end
 
-x_pax_groups = [
-    l_nose + (i - 0.5) / n_pax_groups * l_cabin
-    for i in 1:n_pax_groups
-]
-
-W_pax_total = n_pax * W_pax_each
-x_pax_total = sum((pax_per_group[i] * W_pax_each) * x_pax_groups[i] for i in 1:n_pax_groups) / W_pax_total
 
 # Fuel CG near wing MAC 40%
 x_fuel_export = mac40_w.x
-
-# ------------------------------------------------------------
-# Helper functions
-# ------------------------------------------------------------
-function pctMAC_export(x)
-    return 100 * (x - x_LEMAC_export) / c_w
 end
 
-function cg_export(items)
-    W = sum(w for (w, x) in values(items))
-    M = sum(w * x for (w, x) in values(items))
-    xcg = M / W
-    return (W = W, xcg = xcg, pctMAC = pctMAC_export(xcg))
-end
+# ╔═╡ de203739-c907-40eb-8433-ddccf5599e52
+md"""## Helper Function"""
 
+# ╔═╡ 5202c4d8-18ac-4330-a7bf-26e414ce455b
 function sm_datcom_from_xcg(xcg)
     return 100 * (x_np_DATCOM_export - xcg) / c_w
 end
 
+
+# ╔═╡ 5265cd66-135e-42ce-b26c-bca1c8e11e74
 function sm_vlm_from_xcg(xcg)
     return 100 * (x_np_VLM_export - xcg) / c_w
 end
 
+
+# ╔═╡ fdf8b7a4-3e9a-461c-bc47-7e6dcb9a150d
 function passenger_items_dict()
     return Dict(
         "pax_group_$(i)" => (pax_per_group[i] * W_pax_each, x_pax_groups[i])
@@ -1428,6 +1378,7 @@ function passenger_items_dict()
     )
 end
 
+# ╔═╡ 7c2c97d2-7dd2-42b9-82da-7522682e03e7
 function add_items!(items, more_items)
     for (name, wx) in more_items
         items[name] = wx
@@ -1435,45 +1386,119 @@ function add_items!(items, more_items)
     return items
 end
 
+# ╔═╡ 5d9c59a1-4668-448a-bf8e-0e7c266eaad3
 # ------------------------------------------------------------
-# Existing neutral points
+# Passenger / boarding zones based on actual cabin layout
+# Z1 = Business / First class
+# Z2-Z5 = Economy divided into four row blocks
+# This is used for ALL passenger CG calculations:
+# zero-fuel, full takeoff, mission, and potato plot.
 # ------------------------------------------------------------
-x_np_DATCOM_export = x_np
-x_np_VLM_export = r_np_vlm.x
+begin
+# Cabin layout:
+# Business / First class: 2 rows, 1×2 = 6 pax
+# Economy: 16 rows, 2×2 = 64 pax
+n_business_rows = 2
+n_economy_rows  = 16
+n_rows_total    = n_business_rows + n_economy_rows
 
-# ------------------------------------------------------------
-# Original empty/component CG + SM
-# ------------------------------------------------------------
-original_results = DataFrame(
-    Method = ["DATCOM", "VLM"],
-    x_cg_m = [x_cg, x_cg],
-    CG_percent_MAC = [pctMAC_export(x_cg), pctMAC_export(x_cg)],
-    x_np_m = [x_np_DATCOM_export, x_np_VLM_export],
-    Static_margin_percent = [100 * SM, 100 * SM_VLM],
-    MAC_m = [c_w, c_w],
-    x_LEMAC_m = [x_LEMAC_export, x_LEMAC_export]
+n_board_zones = 5
+end
+
+# ╔═╡ fd464321-1c9f-42f9-83a0-22595d774764
+# ╠═╡ disabled = true
+#=╠═╡
+# Row x-locations from front to rear of cabin
+x_rows = [
+    l_nose + (i - 0.5) / n_rows_total * l_cabin
+    for i in 1:n_rows_total
+]
+
+  ╠═╡ =#
+
+# ╔═╡ 45d17bfc-cf83-4c35-a8f6-6e19f744519b
+# ╠═╡ disabled = true
+#=╠═╡
+# Passenger count per row
+# First 2 rows: 3 pax per row
+# Economy rows: 4 pax per row
+pax_per_row = vcat(
+    fill(3, n_business_rows),
+    fill(4, n_economy_rows)
+)
+  ╠═╡ =#
+
+# ╔═╡ ddcc65cb-fc15-4280-bcf9-211af87a62a0
+#=╠═╡
+if sum(pax_per_row) != n_pax
+    error("Passenger zoning does not match n_pax. Check cabin layout.")
+end
+
+  ╠═╡ =#
+
+# ╔═╡ e745bc71-673c-4176-86d6-ebfd88778651
+# Zone definitions
+zone_rows = Dict(
+    1 => 1:2,      # Business / First class, 6 pax
+    2 => 3:6,      # Front economy, 16 pax
+    3 => 7:10,     # Mid-front economy, 16 pax
+    4 => 11:14,    # Mid-aft economy, 16 pax
+    5 => 15:18     # Aft economy, 16 pax
 )
 
-# ------------------------------------------------------------
-# Zero-fuel and full-fuel weights
-# ------------------------------------------------------------
-zero_fuel_items = copy(weight_position)
-zero_fuel_items["crew"] = (W_crew_export, x_crew_export)
-zero_fuel_items["baggage"] = (W_baggage_export, x_baggage_export)
-add_items!(zero_fuel_items, passenger_items_dict())
+# ╔═╡ 640bb995-1f20-416d-bca8-e1ce474a8519
+zone_names = Dict(
+    1 => "Business / First",
+    2 => "Front economy",
+    3 => "Mid-front economy",
+    4 => "Mid-aft economy",
+    5 => "Aft economy"
+)
 
-zero_fuel_cg = cg_export(zero_fuel_items)
-W_zero_fuel = zero_fuel_cg.W
+# ╔═╡ a4458c0c-a4d8-4e0c-9a33-9979ba6a35e6
+#=╠═╡
+# Passenger count per zone
+pax_per_zone_board = [
+    sum(pax_per_row[collect(zone_rows[z])])
+    for z in 1:n_board_zones
+]
+  ╠═╡ =#
 
-W_fuel_export = TOGW - W_zero_fuel
+# ╔═╡ bb2f77d5-f473-422d-8ddf-a0927a9aa4db
+md"""## Zero-fuel and full-fuel weights"""
 
+# ╔═╡ eab407c5-7649-45ef-808e-fa0a6819d368
+#--------------------------------------
+#Zero-fuel and full-fuel weights
+#--------------------------------------
+begin
+	zero_fuel_items = copy(weight_position)
+	zero_fuel_items["crew"] = (W_crew_export, x_crew_export)
+	zero_fuel_items["baggage"] = (W_baggage_export, x_baggage_export)
+	add_items!(zero_fuel_items, passenger_items_dict())
+	zero_fuel_cg = cg_export(zero_fuel_items)
+	W_zero_fuel = zero_fuel_cg.W
+	W_fuel_export = TOGW - W_zero_fuel
+end
+
+# ╔═╡ 96b75c18-42a9-4458-8ab9-c6ca4c8af645
 if W_fuel_export < 0
     error("Zero-fuel weight exceeds TOGW. Reduce OEW/payload or increase TOGW.")
 end
 
-println("Zero-fuel weight = ", round(W_zero_fuel, digits=2), " kg")
-println("Fuel allowed by TOGW = ", round(W_fuel_export, digits=2), " kg")
-println("Fuel fraction = ", round(W_fuel_export / TOGW * 100, digits=2), " %")
+# ╔═╡ 0a847175-beb1-41da-a1a1-f37aa8229f58
+begin
+	
+	println("Zero-fuel weight = ", round(W_zero_fuel, digits=2), " kg")
+	println("Fuel allowed by TOGW = ", round(W_fuel_export, digits=2), " kg")
+	println("Fuel fraction = ", round(W_fuel_export / TOGW * 100, digits=2), " %")
+
+end
+
+# ╔═╡ f3e31e7b-3a99-4899-b545-98e9836d1abc
+md"""## Loading groups"""
+
+# ╔═╡ 6b877061-a3c5-4cdc-81f8-8a5efc47613f
 
 # ------------------------------------------------------------
 # Loading groups
@@ -1487,7 +1512,9 @@ load_groups = Dict(
     )
 )
 
-function loading_sequence_export(sequence_name, sequence)
+# ╔═╡ 392c3ba1-2223-42ab-9918-d465222bdfb9
+begin
+	function loading_sequence_export(sequence_name, sequence)
     items = copy(weight_position)
 
     df = DataFrame(
@@ -1534,12 +1561,17 @@ function loading_sequence_export(sequence_name, sequence)
     return df
 end
 
+end
+
+
+# ╔═╡ 65e695f1-45a5-495c-943b-6127d817fa18
 # Representative loading sequence
 loading_main = loading_sequence_export(
     "Empty → Crew → Fuel → Payload",
     ["Crew", "Fuel", "Payload"]
 )
 
+# ╔═╡ d99270ee-f606-427f-b441-96f713c5e27d
 # Several loading cases for CG limit search
 loading_scenarios = vcat(
     loading_sequence_export("Crew-Fuel-Payload", ["Crew", "Fuel", "Payload"]),
@@ -1550,12 +1582,16 @@ loading_scenarios = vcat(
     loading_sequence_export("Payload-Fuel-Crew", ["Payload", "Fuel", "Crew"])
 )
 
+
+# ╔═╡ ef03d06e-37ec-438d-b94c-b9a3e0503c92
 # ------------------------------------------------------------
 # Mission CG excursion due to fuel burn
 # TWO-WAY MISSION WITHOUT REFUELING
 # Beta is calculated by cumulative multiplication of stage fractions
 # ------------------------------------------------------------
 
+# ╔═╡ c2f188e9-4022-4602-bde2-6ce601b79567
+begin
 stage_fractions = [
     ("Warm-up", 0.99),
     ("Taxi",    0.99),
@@ -1568,7 +1604,9 @@ stage_fractions = [
 ]
 
 mission_beta = Tuple{String, Float64}[]
+end
 
+# ╔═╡ 0ecf8167-e404-4d88-979a-096df9e4ca76
 let beta = 1.0
     push!(mission_beta, ("Outbound - Start of leg", beta))
 
@@ -1586,6 +1624,8 @@ let beta = 1.0
     end
 end
 
+
+# ╔═╡ e950f895-7cc1-4add-a1e1-5f38683c0d35
 mission_cg = DataFrame(
     Phase = String[],
     Beta = Float64[],
@@ -1597,6 +1637,7 @@ mission_cg = DataFrame(
     SM_VLM_percent = Float64[]
 )
 
+# ╔═╡ d7fd837d-0458-4315-832a-043f6a702a5d
 for (phase, beta_phase) in mission_beta
     items = copy(weight_position)
 
@@ -1632,32 +1673,138 @@ for (phase, beta_phase) in mission_beta
     ))
 end
 
+# ╔═╡ 83c50700-225d-41d6-820b-3565c5c14ea4
 mission_cg[!, :Mission_progress] = collect(range(0.0, 1.0, length=nrow(mission_cg)))
-# ------------------------------------------------------------
-# Good boarding method potato plot
-# Use a balanced-zone boarding order, plus unloading
-# ------------------------------------------------------------
-n_board_zones = 6
-pax_per_zone_board = fill(n_pax ÷ n_board_zones, n_board_zones)
-for i in 1:(n_pax - sum(pax_per_zone_board))
-    pax_per_zone_board[i] += 1
-end
 
+# ╔═╡ 119685b2-ac9f-43fb-8d10-de2803bd2e8b
+md"""## Potato Plot Model
+
+ZONE-BOARDING POTATO PLOT MODEL
+
+Includes a loading line before the potato:
+
+Empty -> crew -> fuel -> baggage
+
+Then zone boarding creates the potato envelope.
+"""
+
+# ╔═╡ 5a8be3e6-fafc-46d1-8451-998642924f6d
+#=╠═╡
+# Zone CG location = weighted average of row locations
 x_zone_board = [
-    l_nose + (i - 0.5) / n_board_zones * l_cabin
-    for i in 1:n_board_zones
+    sum(pax_per_row[collect(zone_rows[z])] .* x_rows[collect(zone_rows[z])]) /
+    sum(pax_per_row[collect(zone_rows[z])])
+    for z in 1:n_board_zones
 ]
 
-good_boarding_order = [3, 4, 2, 5, 1, 6]   # balanced-zone style
+  ╠═╡ =#
 
-function good_boarding_trace()
+# ╔═╡ 63356422-f1ab-4433-b812-db0cd9f7658b
+#=╠═╡
+begin
+# Zone summary table
+zone_summary = DataFrame(
+    Zone = collect(1:n_board_zones),
+    Zone_name = [zone_names[z] for z in 1:n_board_zones],
+    Row_range = [string(first(zone_rows[z]), "–", last(zone_rows[z])) for z in 1:n_board_zones],
+    Passenger_count = pax_per_zone_board,
+    Passenger_weight_kg = pax_per_zone_board .* W_pax_each,
+    x_zone_m = x_zone_board,
+    x_zone_percent_MAC = [pctMAC_export(x) for x in x_zone_board]
+)
+
+end
+  ╠═╡ =#
+
+# ╔═╡ ad5e0856-992c-47c4-82e7-447d0d682456
+md"""## Helper"""
+
+# ╔═╡ fd56913d-08be-4418-b52e-c84de5d31862
+#=╠═╡
+# ------------------------------------------------------------
+# Helper
+# ------------------------------------------------------------
+function make_items_state(; crew=false, fuel=false, baggage=false, boarded_zones=Int[])
     items = copy(weight_position)
 
-    # Start from OEW + crew + full fuel
-    items["crew"] = (W_crew_export, x_crew_export)
-    items["fuel"] = (W_fuel_export, x_fuel_export)
+    if crew
+        items["crew"] = (W_crew_export, x_crew_export)
+    end
+    if fuel
+        items["fuel"] = (W_fuel_export, x_fuel_export)
+    end
+    if baggage
+        items["baggage"] = (W_baggage_export, x_baggage_export)
+    end
 
-    df = DataFrame(
+    for z in boarded_zones
+        items["zone_$(z)"] = (pax_per_zone_board[z] * W_pax_each, x_zone_board[z])
+    end
+
+    return items
+end
+
+  ╠═╡ =#
+
+# ╔═╡ b3c1849d-b9f7-45c2-a7d7-ec2cd9da07ae
+
+function state_row(method_name, step_no, step_name, items)
+    cg = cg_export(items)
+    return (
+        Method = method_name,
+        Step_No = step_no,
+        Step = step_name,
+        Weight_kg = cg.W,
+        x_cg_m = cg.xcg,
+        CG_percent_MAC = cg.pctMAC,
+        SM_DATCOM_percent = sm_datcom_from_xcg(cg.xcg),
+        SM_VLM_percent = sm_vlm_from_xcg(cg.xcg)
+    )
+end
+
+# ╔═╡ 845f8c4e-810c-4346-9cf0-7e3be8fa08ae
+#=╠═╡
+# ------------------------------------------------------------
+# Pre-boarding loading line:
+# Empty -> crew -> fuel -> baggage
+# This gives the "line over the potato"
+# ------------------------------------------------------------
+preboarding_trace = DataFrame([
+    state_row("Pre-boarding loading line", 0, "Empty weight", make_items_state()),
+    state_row("Pre-boarding loading line", 1, "Add crew", make_items_state(crew=true)),
+    state_row("Pre-boarding loading line", 2, "Add fuel", make_items_state(crew=true, fuel=true)),
+    state_row("Pre-boarding loading line", 3, "Add baggage", make_items_state(crew=true, fuel=true, baggage=true))
+])
+
+  ╠═╡ =#
+
+# ╔═╡ 9589c025-9b97-4ad2-80cf-79f3248b05a3
+# Start point for boarding potato = OEW + crew + fuel + baggage
+# Then board passengers by zones.
+
+# # ------------------------------------------------------------
+# Boarding orders
+# Business / First class always boards first
+# ------------------------------------------------------------
+begin
+# Front-based case:
+# Business first, then economy from front to rear
+front_biased_order = [1, 2, 3, 4, 5]
+
+# Back-based case:
+# Business first, then economy from rear to front
+aft_biased_order = [1, 5, 4, 3, 2]
+
+# Recommended case:
+# Business first, then middle economy zones, then front economy,
+# and aft economy last to avoid excessive aft-CG shift.
+recommended_order = [1, 3, 4, 2, 5]
+end
+
+# ╔═╡ 53ea45ff-2c92-4a9d-814a-664cedec178d
+#=╠═╡
+function zone_boarding_trace(order, method_name)
+    rows = DataFrame(
         Method = String[],
         Step_No = Int[],
         Step = String[],
@@ -1668,54 +1815,103 @@ function good_boarding_trace()
         SM_VLM_percent = Float64[]
     )
 
-    function push_state!(df, items, method_name, step_no, step_name)
-        cg = cg_export(items)
-        push!(df, (
-            method_name,
-            step_no,
-            step_name,
-            cg.W,
-            cg.xcg,
-            cg.pctMAC,
-            sm_datcom_from_xcg(cg.xcg),
-            sm_vlm_from_xcg(cg.xcg)
-        ))
+    # Start from OEW + crew + fuel + baggage
+    push!(rows, state_row(method_name, 0, "A: OEW + crew + fuel + baggage",
+        make_items_state(crew=true, fuel=true, baggage=true)))
+
+    boarded = Int[]
+    for (k, z) in enumerate(order)
+        push!(boarded, z)
+        push!(rows, state_row(method_name, k, "Board zone $(z)",
+            make_items_state(crew=true, fuel=true, baggage=true, boarded_zones=boarded)))
     end
 
-    step_no = 0
-    push_state!(df, items, "Balanced-zone boarding", step_no, "Start: OEW + crew + fuel")
+    return rows
+end
+  ╠═╡ =#
 
-    step_no += 1
-    items["baggage"] = (W_baggage_export, x_baggage_export)
-    push_state!(df, items, "Balanced-zone boarding", step_no, "Add baggage")
+# ╔═╡ 6801a7fc-bc93-4faf-9f9b-92d32e896d2c
+#=╠═╡
+begin
+front_trace = zone_boarding_trace(front_biased_order, "Front-biased zone boarding")
+aft_trace = zone_boarding_trace(aft_biased_order, "Aft-biased zone boarding")
+recommended_trace = zone_boarding_trace(recommended_order, "Recommended balanced zone boarding")
 
-    for idx in good_boarding_order
-        step_no += 1
-        items["board_zone_$(idx)"] = (
-            pax_per_zone_board[idx] * W_pax_each,
-            x_zone_board[idx]
-        )
-        push_state!(df, items, "Balanced-zone boarding", step_no, "Board zone $(idx)")
-    end
+# Keep this name for compatibility with the rest of your notebook
+boarding_cg = recommended_trace
 
-    for idx in reverse(good_boarding_order)
-        step_no += 1
-        delete!(items, "board_zone_$(idx)")
-        push_state!(df, items, "Balanced-zone boarding", step_no, "Unload zone $(idx)")
-    end
+# Cases for CG envelope checks
+boarding_envelope_cases = vcat(preboarding_trace, front_trace, aft_trace, recommended_trace)
+end
+  ╠═╡ =#
 
-    step_no += 1
-    delete!(items, "baggage")
-    push_state!(df, items, "Balanced-zone boarding", step_no, "Unload baggage")
+# ╔═╡ 893acab9-a553-4550-9f6b-7df3efd76281
+#=╠═╡
+# ------------------------------------------------------------
+# Potato envelope from front-biased and aft-biased branches
+# same step number = same passenger count
+# ------------------------------------------------------------
+potato_envelope = DataFrame(
+    Step_No = front_trace.Step_No,
+    Weight_kg = front_trace.Weight_kg,
+    Forward_CG_percent_MAC = [
+        min(front_trace.CG_percent_MAC[i], aft_trace.CG_percent_MAC[i])
+        for i in 1:nrow(front_trace)
+    ],
+    Aft_CG_percent_MAC = [
+        max(front_trace.CG_percent_MAC[i], aft_trace.CG_percent_MAC[i])
+        for i in 1:nrow(front_trace)
+    ]
+)
 
-    return df
+  ╠═╡ =#
+
+# ╔═╡ 42b19e2a-16c9-4feb-9915-e768314d430b
+#=╠═╡
+boarding_group_summary = DataFrame(
+    Method = ["Front-biased", "Aft-biased", "Recommended balanced"],
+    Order = [string(front_biased_order), string(aft_biased_order), string(recommended_order)],
+    Min_CG_percent_MAC = [
+        minimum(front_trace.CG_percent_MAC),
+        minimum(aft_trace.CG_percent_MAC),
+        minimum(recommended_trace.CG_percent_MAC)
+    ],
+    Max_CG_percent_MAC = [
+        maximum(front_trace.CG_percent_MAC),
+        maximum(aft_trace.CG_percent_MAC),
+        maximum(recommended_trace.CG_percent_MAC)
+    ],
+    Min_SM_DATCOM_percent = [
+        minimum(front_trace.SM_DATCOM_percent),
+        minimum(aft_trace.SM_DATCOM_percent),
+        minimum(recommended_trace.SM_DATCOM_percent)
+    ],
+    Min_SM_VLM_percent = [
+        minimum(front_trace.SM_VLM_percent),
+        minimum(aft_trace.SM_VLM_percent),
+        minimum(recommended_trace.SM_VLM_percent)
+    ]
+)
+
+  ╠═╡ =#
+
+# ╔═╡ 7e4542b0-e910-4693-a190-cf4cedfac694
+md"""## Gather all CG cases and determine limits
+
+ ##This must be BEFORE any plots using fwd_cg_limit_pct,
+
+ ##aft_cg_limit_pct, x_min_plot, x_max_plot, etc.
+"""
+
+# ╔═╡ 5ba6f0fa-0671-4439-bccf-d09092a3344a
+begin
+	# Reference CG range from lecture / transport aircraft guideline
+fwd_cg_limit_pct = 12.0
+aft_cg_limit_pct = 32.0
 end
 
-boarding_cg = good_boarding_trace()
+# ╔═╡ c53b31aa-cade-4a34-882a-6dbb24e5594b
 
-# ------------------------------------------------------------
-# Gather all CG cases and determine limits
-# ------------------------------------------------------------
 mission_cases = DataFrame(
     Source = fill("Mission fuel burn", nrow(mission_cg)),
     Case = mission_cg.Phase,
@@ -1726,16 +1922,21 @@ mission_cases = DataFrame(
     SM_VLM_percent = mission_cg.SM_VLM_percent
 )
 
-boarding_cases = DataFrame(
-    Source = fill("Boarding potato plot", nrow(boarding_cg)),
-    Case = boarding_cg.Method .* " - " .* boarding_cg.Step,
-    Weight_kg = boarding_cg.Weight_kg,
-    x_cg_m = boarding_cg.x_cg_m,
-    CG_percent_MAC = boarding_cg.CG_percent_MAC,
-    SM_DATCOM_percent = boarding_cg.SM_DATCOM_percent,
-    SM_VLM_percent = boarding_cg.SM_VLM_percent
-)
+# ╔═╡ 4b8e0852-72cc-4aaf-ab65-dfd81d1dd7cb
+#=╠═╡
 
+boarding_cases = DataFrame(
+    Source = fill("Zone boarding / loading", nrow(boarding_envelope_cases)),
+    Case = boarding_envelope_cases.Method .* " - " .* boarding_envelope_cases.Step,
+    Weight_kg = boarding_envelope_cases.Weight_kg,
+    x_cg_m = boarding_envelope_cases.x_cg_m,
+    CG_percent_MAC = boarding_envelope_cases.CG_percent_MAC,
+    SM_DATCOM_percent = boarding_envelope_cases.SM_DATCOM_percent,
+    SM_VLM_percent = boarding_envelope_cases.SM_VLM_percent
+)
+  ╠═╡ =#
+
+# ╔═╡ 4364d0c9-35bd-4aff-9243-fe1db3852520
 loading_cases = DataFrame(
     Source = fill("Loading scenarios", nrow(loading_scenarios)),
     Case = loading_scenarios.Sequence .* " - " .* loading_scenarios.Step,
@@ -1746,10 +1947,21 @@ loading_cases = DataFrame(
     SM_VLM_percent = loading_scenarios.SM_VLM_percent
 )
 
+# ╔═╡ 485a94a5-f734-473d-8005-8922c3dc0e27
+#=╠═╡
 all_cg_cases = vcat(loading_cases, mission_cases, boarding_cases)
+  ╠═╡ =#
 
+# ╔═╡ fc7fc815-9fee-43dd-afd0-76af49ecd92f
+#=╠═╡
+begin
 fwd_idx = argmin(all_cg_cases.CG_percent_MAC)
 aft_idx = argmax(all_cg_cases.CG_percent_MAC)
+end
+  ╠═╡ =#
+
+# ╔═╡ 1d101652-4ec0-4ca4-bf94-8fbba5145909
+#=╠═╡
 
 cg_limits = DataFrame(
     Limit = ["Forward CG limit from cases", "Aft CG limit from cases"],
@@ -1761,13 +1973,19 @@ cg_limits = DataFrame(
     SM_DATCOM_percent = [all_cg_cases.SM_DATCOM_percent[fwd_idx], all_cg_cases.SM_DATCOM_percent[aft_idx]],
     SM_VLM_percent = [all_cg_cases.SM_VLM_percent[fwd_idx], all_cg_cases.SM_VLM_percent[aft_idx]]
 )
+  ╠═╡ =#
 
-# Reference CG range from lecture slide
-fwd_cg_limit_pct = 12.0
-aft_cg_limit_pct = 32.0
+# ╔═╡ df7014c7-d707-4a8c-9f07-e5337b443063
+#=╠═╡
 
 cg_reference_check = DataFrame(
-    Quantity = ["Minimum CG", "Maximum CG", "Forward reference", "Aft reference", "Within 12–32% MAC?"],
+    Quantity = [
+        "Minimum CG",
+        "Maximum CG",
+        "Forward reference",
+        "Aft reference",
+        "Within 12–32% MAC?"
+    ],
     Value = Any[
         minimum(all_cg_cases.CG_percent_MAC),
         maximum(all_cg_cases.CG_percent_MAC),
@@ -1777,21 +1995,36 @@ cg_reference_check = DataFrame(
         maximum(all_cg_cases.CG_percent_MAC) <= aft_cg_limit_pct
     ]
 )
+  ╠═╡ =#
 
+# ╔═╡ 912ca11b-72f9-4888-bbc5-bdcde9c2389b
+#=╠═╡
 println(cg_limits)
+  ╠═╡ =#
+
+# ╔═╡ 1be4d7be-e934-45c9-9743-0edbecf0b716
+#=╠═╡
+
 println(cg_reference_check)
+  ╠═╡ =#
 
-# ============================================================
-# 7) PLOTS
-# ============================================================
-x_min_plot = min(minimum(all_cg_cases.CG_percent_MAC) - 2, fwd_cg_limit_pct - 2)
-x_max_plot = max(maximum(all_cg_cases.CG_percent_MAC) + 2, aft_cg_limit_pct + 2)
-y_min_plot = minimum(all_cg_cases.Weight_kg) - 1000
-y_max_plot = maximum(all_cg_cases.Weight_kg) + 1000
+# ╔═╡ 2b0d442d-a482-4599-91c7-4407c75c5de7
+#=╠═╡
+begin
+	# Plot limits for CG excursion plot
+	x_min_plot = min(minimum(all_cg_cases.CG_percent_MAC) - 2, fwd_cg_limit_pct - 2)
+	x_max_plot = max(maximum(all_cg_cases.CG_percent_MAC) + 2, aft_cg_limit_pct + 2)
+	y_min_plot = minimum(all_cg_cases.Weight_kg) - 1000
+	y_max_plot = maximum(all_cg_cases.Weight_kg) + 1000
+end
 
-# ------------------------------------------------------------
-# Representative loading-case CG curve
-# ------------------------------------------------------------
+  ╠═╡ =#
+
+# ╔═╡ 4768446a-3797-421e-aadf-c33fd795b6dc
+# ============================================================
+# REPRESENTATIVE LOADING-CASE CG PLOT
+# ============================================================
+begin
 loading_cases_plot = plot(
     loading_main.CG_percent_MAC,
     loading_main.Weight_kg,
@@ -1802,11 +2035,24 @@ loading_cases_plot = plot(
     title = "CG in Representative Loading Cases",
     label = "Empty → Crew → Fuel → Payload",
     grid = true,
-    legend = :topright
+    legend = :outerright,
+    size = (1000, 650)
+)
+vline!(
+    loading_cases_plot,
+    [fwd_cg_limit_pct],
+    linestyle = :dash,
+    linewidth = 2,
+    label = "Forward CG ref. limit"
 )
 
-vline!(loading_cases_plot, [fwd_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Forward CG ref. limit")
-vline!(loading_cases_plot, [aft_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Aft CG ref. limit")
+vline!(
+    loading_cases_plot,
+    [aft_cg_limit_pct],
+    linestyle = :dash,
+    linewidth = 2,
+    label = "Aft CG ref. limit"
+)
 
 for i in 1:nrow(loading_main)
     annotate!(
@@ -1816,10 +2062,15 @@ for i in 1:nrow(loading_main)
         text(loading_main.Step[i], 7, :left)
     )
 end
+end
 
-# ------------------------------------------------------------
-# Mission CG curve with annotations
-# ------------------------------------------------------------
+
+# ╔═╡ b5586ff2-7ef6-4b2c-ac25-7ae125067167
+begin
+	# ============================================================
+# MISSION CG EXCURSION PLOT
+# ============================================================
+
 mission_cg_plot = plot(
     mission_cg.CG_percent_MAC,
     mission_cg.Weight_kg,
@@ -1830,20 +2081,35 @@ mission_cg_plot = plot(
     title = "Mission CG Excursion Due to Fuel Burn (Two-Way Mission)",
     label = "Mission fuel burn",
     grid = true,
-    legend = :topright
+    legend = :bottomleft,
+    size = (1000, 650)
 )
 
-vline!(mission_cg_plot, [fwd_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Forward CG ref. limit")
-vline!(mission_cg_plot, [aft_cg_limit_pct], linestyle = :dash, linewidth = 2, label = "Aft CG ref. limit")
+vline!(
+    mission_cg_plot,
+    [fwd_cg_limit_pct],
+    linestyle = :dash,
+    linewidth = 2,
+    label = "Forward CG ref. limit"
+)
+
+vline!(
+    mission_cg_plot,
+    [aft_cg_limit_pct],
+    linestyle = :dash,
+    linewidth = 2,
+    label = "Aft CG ref. limit"
+)
 
 mission_labels = Dict(
     "Outbound - Start of leg" => "HKG departure",
-    "Outbound - After climb" => "Outbound climb",
-    "Outbound - After cruise" => "Outbound cruise",
-    "Outbound - After landing" => "Outstation landing",
-    "Return - After takeoff" => "Return takeoff",
-    "Return - After cruise" => "Return cruise",
-    "Return - After landing" => "Final landing"
+    "Outbound - After Climb" => "Outbound climb",
+    "Outbound - After Cruise" => "Outbound cruise",
+    "Outbound - After Landing" => "Outstation landing",
+    "Return - Start of leg" => "Return start",
+    "Return - After Takeoff" => "Return takeoff",
+    "Return - After Cruise" => "Return cruise",
+    "Return - After Landing" => "Final landing"
 )
 
 for i in 1:nrow(mission_cg)
@@ -1858,130 +2124,15 @@ for i in 1:nrow(mission_cg)
     end
 end
 
+# Keep this name because your export section saves mission_only_plot
 mission_only_plot = mission_cg_plot
 
-# ------------------------------------------------------------
-# Potato plot: good boarding method with loading + unloading
-# ------------------------------------------------------------
-first_unload_idx = findfirst(s -> startswith(s, "Unload"), boarding_cg.Step)
-full_load_idx = first_unload_idx - 1
-
-load_rows = 1:full_load_idx
-unload_rows = first_unload_idx:nrow(boarding_cg)
-
-potato_plot = plot(
-    xlabel = "CG location (%MAC)",
-    ylabel = "Aircraft weight (kg)",
-    title = "Boarding Potato Plot — Balanced-Zone Boarding",
-    legend = :topright,
-    grid = true
-)
-
-plot!(
-    potato_plot,
-    boarding_cg.CG_percent_MAC[load_rows],
-    boarding_cg.Weight_kg[load_rows],
-    marker = :circle,
-    linewidth = 2.5,
-    label = "Loading"
-)
-
-plot!(
-    potato_plot,
-    boarding_cg.CG_percent_MAC[unload_rows],
-    boarding_cg.Weight_kg[unload_rows],
-    marker = :diamond,
-    linewidth = 2.5,
-    label = "Unloading"
-)
-
-vline!(potato_plot, [fwd_cg_limit_pct], linestyle = :dot, linewidth = 2, label = "Forward CG ref. limit")
-vline!(potato_plot, [aft_cg_limit_pct], linestyle = :dot, linewidth = 2, label = "Aft CG ref. limit")
-
-annotate!(potato_plot, boarding_cg.CG_percent_MAC[1], boarding_cg.Weight_kg[1], text("Start", 8, :right))
-annotate!(potato_plot, boarding_cg.CG_percent_MAC[full_load_idx], boarding_cg.Weight_kg[full_load_idx], text("Full load", 8, :left))
-annotate!(potato_plot, boarding_cg.CG_percent_MAC[end], boarding_cg.Weight_kg[end], text("Unload complete", 8, :left))
-
-# ------------------------------------------------------------
-# Potato plot: points-only version
-# Shows each calculated loading/unloading state as a point
-# ------------------------------------------------------------
-
-# Short labels for each point: A, B, C, ...
-point_labels = [string(Char('A' + i - 1)) for i in 1:nrow(boarding_cg)]
-
-potato_points_label_table = DataFrame(
-    Label = point_labels,
-    Step_No = boarding_cg.Step_No,
-    Step = boarding_cg.Step,
-    Weight_kg = boarding_cg.Weight_kg,
-    CG_percent_MAC = boarding_cg.CG_percent_MAC,
-    SM_DATCOM_percent = boarding_cg.SM_DATCOM_percent,
-    SM_VLM_percent = boarding_cg.SM_VLM_percent
-)
-
-# Split loading and unloading points
-first_unload_idx_points = findfirst(s -> startswith(s, "Unload"), boarding_cg.Step)
-full_load_idx_points = first_unload_idx_points - 1
-
-loading_point_rows = 1:full_load_idx_points
-unloading_point_rows = first_unload_idx_points:nrow(boarding_cg)
-
-potato_points_plot = plot(
-    xlabel = "CG location (%MAC)",
-    ylabel = "Aircraft weight (kg)",
-    title = "Boarding Potato Plot — Points Only",
-    legend = :topright,
-    grid = true
-)
-
-# Loading points only
-scatter!(
-    potato_points_plot,
-    boarding_cg.CG_percent_MAC[loading_point_rows],
-    boarding_cg.Weight_kg[loading_point_rows],
-    markersize = 6,
-    label = "Loading points"
-)
-
-# Unloading points only
-scatter!(
-    potato_points_plot,
-    boarding_cg.CG_percent_MAC[unloading_point_rows],
-    boarding_cg.Weight_kg[unloading_point_rows],
-    markersize = 6,
-    marker = :diamond,
-    label = "Unloading points"
-)
-
-# Forward/aft CG reference limits
-vline!(
-    potato_points_plot,
-    [fwd_cg_limit_pct],
-    linestyle = :dot,
-    linewidth = 2,
-    label = "Forward CG ref. limit"
-)
-
-vline!(
-    potato_points_plot,
-    [aft_cg_limit_pct],
-    linestyle = :dot,
-    linewidth = 2,
-    label = "Aft CG ref. limit"
-)
-
-# Label each point with A, B, C, ...
-for i in 1:nrow(boarding_cg)
-    annotate!(
-        potato_points_plot,
-        boarding_cg.CG_percent_MAC[i],
-        boarding_cg.Weight_kg[i],
-        text(point_labels[i], 8, :left)
-    )
 end
 
-# ------------------------------------------------------------
+
+# ╔═╡ 1ec9a50a-9f8f-45ea-bb55-0e2b4b5bccf8
+begin
+	# ------------------------------------------------------------
 # Static margin during loading cases
 # ------------------------------------------------------------
 sm_loading_plot = plot(
@@ -2007,6 +2158,10 @@ plot!(
     label = "VLM"
 )
 
+end
+
+# ╔═╡ 83bb2a87-4d9a-4c9a-a46c-9c2a1af98d1a
+begin
 # ------------------------------------------------------------
 # Static margin during mission
 # ------------------------------------------------------------
@@ -2030,7 +2185,11 @@ plot!(
     linewidth = 2,
     label = "VLM"
 )
+end
 
+# ╔═╡ 8cb530a9-8dc0-48ce-9b09-89278d8b7e66
+#=╠═╡
+begin
 # ------------------------------------------------------------
 # Combined CG excursion plot (tidier)
 # ------------------------------------------------------------
@@ -2040,7 +2199,7 @@ cg_excursion_plot = plot(
     xlabel = "CG location (%MAC)",
     ylabel = "Aircraft weight (kg)",
     title = "CG Excursion / Envelope Plot",
-    legend = :topright,
+    legend = :topleft,
     grid = true
 )
 
@@ -2067,14 +2226,18 @@ plot!(
 
 plot!(
     cg_excursion_plot,
-    boarding_cg.CG_percent_MAC,
-    boarding_cg.Weight_kg,
+    recommended_trace.CG_percent_MAC,
+    recommended_trace.Weight_kg,
     marker = :diamond,
     linewidth = 2,
-    label = "Boarding / unloading"
+    label = "Recommended boarding groups"
 )
+end
+  ╠═╡ =#
 
-        # ============================================================
+# ╔═╡ 0425b7cf-4c65-4b7e-89af-07e36f6269e3
+begin
+	  # ============================================================
         # WEIGHT AND BALANCE TABLE FOR REPORT EXPORT
         # Does NOT change original x_cg, SM, or VLM SM
         # ============================================================
@@ -2102,8 +2265,12 @@ plot!(
             ))
         end
 
-        # Add useful loads for reporting only
-# Add useful loads for reporting only
+end
+
+
+# ╔═╡ e7f04f09-dcfa-4f01-b165-840b30d58826
+begin
+	# Add useful loads for reporting only
 extra_loads = Dict(
     "crew_report" => (W_crew_export, x_crew_export),
     "fuel_full_report" => (W_fuel_export, x_fuel_export),
@@ -2123,9 +2290,10 @@ for name in sort(collect(keys(extra_loads)))
     ))
 end
 
-kg_to_lb = 2.20462262185
-m_to_ft = 3.280839895
+end
 
+
+# ╔═╡ dc124f12-522a-4d24-ac67-16724feb68ec
 function group_row(group, component, W, x; note="")
     return (
         group,
@@ -2140,6 +2308,7 @@ function group_row(group, component, W, x; note="")
     )
 end
 
+# ╔═╡ a14ffdbc-36ea-4079-86b0-46314688fd1f
 summary_group_weight_statement = DataFrame(
     Group = String[],
     Component = String[],
@@ -2152,12 +2321,16 @@ summary_group_weight_statement = DataFrame(
     Notes = String[]
 )
 
+
+# ╔═╡ 105d22aa-c847-46c8-a021-dd43d604cc1d
 # Structures group
 for comp in ["wing", "htail", "vtail", "fuse", "noseLG", "mainLG"]
     W, x = weight_position[comp]
     push!(summary_group_weight_statement, group_row("Structures", comp, W, x; note="Raymer quick-and-dirty / geometry-based CG"))
 end
 
+# ╔═╡ 8a61ffb2-e425-4a35-8270-5d46c13de0ed
+begin
 # Propulsion group
 W_eng_installed, x_eng = weight_position["engine"]
 push!(summary_group_weight_statement, group_row("Propulsion", "installed engines", W_eng_installed, x_eng; note="1.3 × dry engine weight × 2"))
@@ -2171,7 +2344,10 @@ push!(summary_group_weight_statement, group_row("Useful load", "crew", W_crew_ex
 push!(summary_group_weight_statement, group_row("Useful load", "fuel usable", W_fuel_export, x_fuel_export; note="fuel mass from TOGW minus zero-fuel weight"))
 push!(summary_group_weight_statement, group_row("Useful load", "passengers", W_pax_total, x_pax_total; note="70 pax × 90 kg"))
 push!(summary_group_weight_statement, group_row("Useful load", "baggage", W_baggage_export, x_baggage_export; note="70 pax × 15 kg"))
+end
 
+# ╔═╡ 5cc95516-f41c-46aa-9daa-eff1f393aa0d
+begin
 summary_group_totals = combine(
     groupby(summary_group_weight_statement, :Group),
     :Weight_kg => sum => :Weight_kg,
@@ -2179,10 +2355,13 @@ summary_group_totals = combine(
     :Weight_lb => sum => :Weight_lb,
     :Moment_ft_lb => sum => :Moment_ft_lb
 )
-
 summary_group_totals.Loc_m = summary_group_totals.Moment_kg_m ./ summary_group_totals.Weight_kg
 summary_group_totals.Loc_ft = summary_group_totals.Moment_ft_lb ./ summary_group_totals.Weight_lb
 
+end
+
+# ╔═╡ 6908caa7-b426-4038-a428-eccadefd2ad5
+begin
 # Overall full takeoff loading summary
 full_takeoff_items = copy(weight_position)
 full_takeoff_items["crew"] = (W_crew_export, x_crew_export)
@@ -2190,6 +2369,142 @@ full_takeoff_items["fuel"] = (W_fuel_export, x_fuel_export)
 full_takeoff_items["baggage"] = (W_baggage_export, x_baggage_export)
 add_items!(full_takeoff_items, passenger_items_dict())
 full_takeoff_cg = cg_export(full_takeoff_items)
+end
+
+# ╔═╡ 95f37264-1f87-472a-828f-223c4f566274
+md"""## 3D AIRCRAFT WEIGHT & BALANCE / STABILITY VISUALIZATION
+""" 
+
+# ╔═╡ 5cb412ad-f119-4bca-9514-706a0afdbe70
+# ============================================================
+# 3D AIRCRAFT WEIGHT & BALANCE / STABILITY VISUALIZATION
+# ============================================================
+
+# component points for plotting/export
+aircraft_component_points = DataFrame(
+    Component = String[],
+    x_m = Float64[],
+    y_m = Float64[],
+    z_m = Float64[]
+)
+
+
+# ╔═╡ 44f0b92e-4906-4b50-b411-80bf76bcad5b
+function add_component_point!(df, name, x, y, z)
+    push!(df, (name, x, y, z))
+end
+
+# ╔═╡ 8f850f3e-799d-435e-b6b8-38212fd40174
+begin
+	# Main reference points
+add_component_point!(aircraft_component_points, "Full takeoff CG", full_takeoff_cg.xcg, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "Empty/component CG", x_cg, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "Neutral point DATCOM", x_np_DATCOM_export, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "Neutral point VLM", x_np_VLM_export, 0.0, 0.0)
+
+# Main structural CGs
+add_component_point!(aircraft_component_points, "Wing CG", mac40_w.x, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "H-tail CG", mac40_h.x, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "V-tail CG", mac40_v.x, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "Fuselage CG", x_fuse, 0.0, 0.0)
+add_component_point!(aircraft_component_points, "All-else CG", x_other, 0.0, 0.0)
+
+# Engines
+add_component_point!(aircraft_component_points, "Left engine", eng_L.x, eng_L.y, eng_L.z)
+add_component_point!(aircraft_component_points, "Right engine", eng_R.x, eng_R.y, eng_R.z)
+
+# Landing gear
+add_component_point!(aircraft_component_points, "Nose LG", x_nLG, 0.0, -fuse.radius)
+add_component_point!(aircraft_component_points, "Main LG", x_mLG, 0.0, -fuse.radius)
+
+# Useful loads
+add_component_point!(aircraft_component_points, "Crew", x_crew_export, 0.0, 0.45 * fuse.radius)
+add_component_point!(aircraft_component_points, "Fuel", x_fuel_export, 0.0, -0.15 * fuse.radius)
+add_component_point!(aircraft_component_points, "Passengers", x_pax_total, 0.0, 0.25 * fuse.radius)
+add_component_point!(aircraft_component_points, "Baggage", x_baggage_export, 0.0, -0.35 * fuse.radius)
+end
+
+# ╔═╡ 26d1ad08-da99-43b2-9f9d-d219291670d0
+begin
+	# Plot
+aircraft_wb_plot = plot(
+    xlim = (-1, fuse.length + 3),
+    ylim = (-0.6span(wing), 0.6span(wing)),
+    zlim = (-0.35span(wing), 0.35span(wing)),
+    xlabel = "x from nose (m)",
+    ylabel = "y (m)",
+    zlabel = "z (m)",
+    title = "Aircraft Weight & Balance / Stability Layout\nFull-takeoff DATCOM SM = $(round(sm_datcom_from_xcg(full_takeoff_cg.xcg), digits=2))%   |   VLM SM = $(round(sm_vlm_from_xcg(full_takeoff_cg.xcg), digits=2))%",
+    camera = (18, 35),
+    legend = :outerright,
+    size = (1200, 900),
+    grid = true
+)
+
+# Aircraft geometry - make edges darker and thicker
+plot!(
+    aircraft_wb_plot,
+    fuse,
+    alpha = 0.20,
+    linealpha = 1.0,
+    lw = 2.8,
+    lc = :black,
+    label = "Fuselage"
+)
+
+plot!(
+    aircraft_wb_plot,
+    wing,
+    0.4,
+    alpha = 0.28,
+    linealpha = 1.0,
+    lw = 2.8,
+    lc = :black,
+    label = "Wing"
+)
+
+plot!(
+    aircraft_wb_plot,
+    htail,
+    0.4,
+    alpha = 0.35,
+    linealpha = 1.0,
+    lw = 2.8,
+    lc = :black,
+    label = "Horizontal tail"
+)
+
+plot!(
+    aircraft_wb_plot,
+    vtail,
+    0.4,
+    alpha = 0.35,
+    linealpha = 1.0,
+    lw = 2.8,
+    lc = :black,
+    label = "Vertical tail"
+)
+
+end
+
+# ╔═╡ 3dd69b9e-f609-4123-b3c5-cee2797f3ed3
+function add_point3d!(plt, x, y, z, labelname; ms=5)
+    scatter!(plt, [x], [y], [z], markersize = ms, markerstrokewidth = 1.5, label = labelname)
+end
+
+# ╔═╡ 298e8971-03b5-4e9e-94f0-387123ac99f5
+begin
+	# Show all points
+for i in 1:nrow(aircraft_component_points)
+    add_point3d!(
+        aircraft_wb_plot,
+        aircraft_component_points.x_m[i],
+        aircraft_component_points.y_m[i],
+        aircraft_component_points.z_m[i],
+        aircraft_component_points.Component[i];
+        ms = aircraft_component_points.Component[i] in ["Full takeoff CG", "Neutral point DATCOM", "Neutral point VLM"] ? 7 : 5
+    )
+end
 
         weight_balance_plot = scatter(
             weight_balance_table.x_cg_m,
@@ -2208,8 +2523,15 @@ full_takeoff_cg = cg_export(full_takeoff_items)
                 text(weight_balance_table.Component[i], 7)
             )
         end
+end
 
-        # ============================================================
+
+# ╔═╡ 12cdf9e7-fbfe-416f-bc94-ffc380ab3138
+md"""## AERODYNAMIC / STABILITY DERIVATIVES SUMMARY"""
+
+# ╔═╡ cf03ab37-1865-404c-82b0-63a6362df604
+begin
+# ============================================================
         # AERODYNAMIC / STABILITY DERIVATIVES SUMMARY
         # ============================================================
 
@@ -2306,7 +2628,14 @@ full_takeoff_cg = cg_export(full_takeoff_items)
         ))
 
         aero_derivatives_summary
+end
 
+# ╔═╡ cbdf5265-1c2b-4bbc-a458-18fba0c9d376
+#=╠═╡
+
+
+begin
+       
         # ============================================================
         # 5) EXPORT
         # ============================================================
@@ -2355,6 +2684,15 @@ full_takeoff_cg = cg_export(full_takeoff_items)
         CSV.write(joinpath(outdir, "summary_group_totals.csv"), summary_group_totals)
         CSV.write(joinpath(outdir, "cg_reference_check.csv"), cg_reference_check)
         CSV.write(joinpath(outdir, "potato_points_label_table.csv"), potato_points_label_table)
+        CSV.write(joinpath(outdir, "zone_boarding_summary.csv"), zone_summary)
+CSV.write(joinpath(outdir, "preboarding_loading_trace.csv"), preboarding_trace)
+CSV.write(joinpath(outdir, "zone_boarding_front_trace.csv"), front_trace)
+CSV.write(joinpath(outdir, "zone_boarding_aft_trace.csv"), aft_trace)
+CSV.write(joinpath(outdir, "zone_boarding_recommended_trace.csv"), recommended_trace)
+CSV.write(joinpath(outdir, "zone_boarding_envelope_cases.csv"), boarding_envelope_cases)
+CSV.write(joinpath(outdir, "zone_boarding_potato_envelope.csv"), potato_envelope)
+CSV.write(joinpath(outdir, "zone_boarding_group_summary.csv"), boarding_group_summary)
+CSV.write(joinpath(outdir, "aircraft_component_points.csv"), aircraft_component_points)
 
         open(joinpath(outdir, "aero_derivatives_summary.txt"), "w") do dio
             println(dio, "AERODYNAMIC AND STABILITY DERIVATIVES SUMMARY")
@@ -2374,6 +2712,8 @@ full_takeoff_cg = cg_export(full_takeoff_items)
         savefig(cg_excursion_plot, joinpath(outdir, "cg_excursion_envelope_plot.png"))
         savefig(weight_balance_plot, joinpath(outdir, "weight_balance_component_locations.png"))
         savefig(potato_points_plot, joinpath(outdir, "boarding_potato_points_only.png"))
+        savefig(potato_plot, joinpath(outdir, "zone_boarding_potato_plot.png"))
+savefig(aircraft_wb_plot, joinpath(outdir, "aircraft_weight_balance_3d.png"))
 
         open(joinpath(outdir, "summary.txt"), "w") do io
 
@@ -2479,29 +2819,237 @@ end
         println("ZIP file created: ", zipname)
 
         original_results, mission_cg, boarding_cg, cg_limits, mission_cg_plot, sm_mission_plot, sm_loading_plot, potato_plot
-    end
-
-
+end
 
   
+  ╠═╡ =#
 
 # ╔═╡ 402ead4c-b3e9-4153-baee-1048468e6080
     # The End
+
+# ╔═╡ a4179e64-4040-4d61-98a8-a83ea314114b
+begin
+W_pax_total = n_pax * W_pax_each
+x_pax_total = sum((pax_per_group[i] * W_pax_each) * x_pax_groups[i] for i in 1:n_pax_groups) / W_pax_total
+end
+
+# ╔═╡ 43c09491-0cd2-41e3-84f6-9df7927edbf8
+#=╠═╡
+begin
+	# ============================================================
+# POTATO PLOT - ZONE BOARDING + LOADING + MISSION LINE
+# ============================================================
+
+# Polygon for potato shape
+x_poly = vcat(
+    potato_envelope.Forward_CG_percent_MAC,
+    reverse(potato_envelope.Aft_CG_percent_MAC)
+)
+
+y_poly = vcat(
+    potato_envelope.Weight_kg,
+    reverse(potato_envelope.Weight_kg)
+)
+
+potato_plot = plot(
+    x_poly,
+    y_poly,
+    seriestype = :shape,
+    alpha = 0.18,
+    linewidth = 0,
+    label = "Zone-boarding CG envelope",
+    xlabel = "CG location (%MAC)",
+    ylabel = "Aircraft weight (kg)",
+    title = "Potato Plot — Zone Boarding with Loading Line",
+    legend = :outerright,
+    grid = true,
+    size = (1100, 700)
+)
+
+# Potato forward boundary
+plot!(
+    potato_plot,
+    potato_envelope.Forward_CG_percent_MAC,
+    potato_envelope.Weight_kg,
+    linewidth = 2.5,
+    marker = :circle,
+    label = "Front-first zone boarding"
+)
+
+# Potato aft boundary
+plot!(
+    potato_plot,
+    potato_envelope.Aft_CG_percent_MAC,
+    potato_envelope.Weight_kg,
+    linewidth = 2.5,
+    marker = :diamond,
+    label = "Rear-first zone boarding"
+)
+
+# Recommended zone boarding path
+plot!(
+    potato_plot,
+    recommended_trace.CG_percent_MAC,
+    recommended_trace.Weight_kg,
+    linewidth = 3,
+    marker = :star,
+    label = "Recommended zone boarding"
+)
+
+# Pre-boarding loading line: Empty -> crew -> fuel -> baggage
+plot!(
+    potato_plot,
+    preboarding_trace.CG_percent_MAC,
+    preboarding_trace.Weight_kg,
+    linewidth = 3,
+    marker = :square,
+    label = "Crew / fuel / baggage loading"
+)
+
+# CG limits
+vline!(
+    potato_plot,
+    [fwd_cg_limit_pct],
+    linestyle = :dash,
+    linewidth = 2,
+    label = "Forward CG ref. limit"
+)
+
+vline!(
+    potato_plot,
+    [aft_cg_limit_pct],
+    linestyle = :dash,
+    linewidth = 2,
+    label = "Aft CG ref. limit"
+)
+
+# Labels for recommended boarding points: A, B, C...
+point_labels = [string(Char('A' + i - 1)) for i in 1:nrow(recommended_trace)]
+for i in 1:nrow(recommended_trace)
+    annotate!(
+        potato_plot,
+        recommended_trace.CG_percent_MAC[i],
+        recommended_trace.Weight_kg[i],
+        text(point_labels[i], 8, :left)
+    )
+end
+
+# Labels for pre-boarding line
+for i in 1:nrow(preboarding_trace)
+    annotate!(
+        potato_plot,
+        preboarding_trace.CG_percent_MAC[i],
+        preboarding_trace.Weight_kg[i],
+        text(preboarding_trace.Step[i], 7, :right)
+    )
+end
+
+end
+
+  ╠═╡ =#
+
+# ╔═╡ f654b669-d0d3-4a65-8cb7-df97f982850c
+#=╠═╡
+begin
+	# ------------------------------------------------------------
+# Points-only plot: recommended boarding sequence
+# ------------------------------------------------------------
+point_labels = [string(Char('A' + i - 1)) for i in 1:nrow(recommended_trace)]
+
+potato_points_label_table = DataFrame(
+    Label = point_labels,
+    Step_No = recommended_trace.Step_No,
+    Step = recommended_trace.Step,
+    Weight_kg = recommended_trace.Weight_kg,
+    CG_percent_MAC = recommended_trace.CG_percent_MAC,
+    SM_DATCOM_percent = recommended_trace.SM_DATCOM_percent,
+    SM_VLM_percent = recommended_trace.SM_VLM_percent
+)
+
+potato_points_plot = plot(
+    xlabel = "CG location (%MAC)",
+    ylabel = "Aircraft weight (kg)",
+    title = "Recommended Zone Boarding — Points Only",
+    legend = :outerright,
+    grid = true,
+    size = (1000, 650)
+)
+
+scatter!(
+    potato_points_plot,
+    recommended_trace.CG_percent_MAC,
+    recommended_trace.Weight_kg,
+    markersize = 6,
+    label = "Recommended boarding points"
+)
+
+plot!(
+    potato_points_plot,
+    recommended_trace.CG_percent_MAC,
+    recommended_trace.Weight_kg,
+    linewidth = 2,
+    label = "Recommended sequence"
+)
+
+vline!(
+    potato_points_plot,
+    [fwd_cg_limit_pct],
+    linestyle = :dot,
+    linewidth = 2,
+    label = "Forward CG ref. limit"
+)
+
+vline!(
+    potato_points_plot,
+    [aft_cg_limit_pct],
+    linestyle = :dot,
+    linewidth = 2,
+    label = "Aft CG ref. limit"
+)
+
+for i in 1:nrow(recommended_trace)
+    annotate!(
+        potato_points_plot,
+        recommended_trace.CG_percent_MAC[i],
+        recommended_trace.Weight_kg[i],
+        text(point_labels[i], 8, :left)
+    )
+end
+end
+  ╠═╡ =#
+
+# ╔═╡ 7c96f858-5bb5-4b51-8b3d-bb7002b22423
+#=╠═╡
+begin
+# Total passenger weight and CG using zone model
+W_pax_total = n_pax * W_pax_each
+
+x_pax_total = sum(
+    pax_per_zone_board[z] * W_pax_each * x_zone_board[z]
+    for z in 1:n_board_zones
+) / W_pax_total
+end
+  ╠═╡ =#
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 AeroFuse = "477c59f4-51f5-487f-bf1e-8db39645b227"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
 
 [compat]
 AeroFuse = "~0.4.12"
+CSV = "~0.10.16"
 DataFrames = "~1.8.1"
 Plots = "~1.41.6"
 PlutoUI = "~0.7.80"
+ZipFile = "~0.10.1"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -2510,7 +3058,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "1a60a09201b30836a905f0656174d26f0afae164"
+project_hash = "5aea74b56da4da8ed3ff01aba15836b5f6aea5c8"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -2623,6 +3171,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "1b96ea4a01afe0ea4090c5c8039690672dd13f2e"
 uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
 version = "1.0.9+0"
+
+[[deps.CSV]]
+deps = ["CodecZlib", "Dates", "FilePathsBase", "InlineStrings", "Mmap", "Parsers", "PooledArrays", "PrecompileTools", "SentinelArrays", "Tables", "Unicode", "WeakRefStrings", "WorkerUtilities"]
+git-tree-sha1 = "8d8e0b0f350b8e1c91420b5e64e5de774c2f0f4d"
+uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+version = "0.10.16"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
@@ -2867,6 +3421,17 @@ deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "JLLWrappers",
 git-tree-sha1 = "66381d7059b5f3f6162f28831854008040a4e905"
 uuid = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
 version = "8.0.1+1"
+
+[[deps.FilePathsBase]]
+deps = ["Compat", "Dates"]
+git-tree-sha1 = "3bab2c5aa25e7840a4b065805c0cdfc01f3068d2"
+uuid = "48062228-2e41-5def-b9a4-89aafe57970f"
+version = "0.9.24"
+weakdeps = ["Mmap", "Test"]
+
+    [deps.FilePathsBase.extensions]
+    FilePathsBaseMmapExt = "Mmap"
+    FilePathsBaseTestExt = "Test"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -3924,11 +4489,22 @@ git-tree-sha1 = "96478df35bbc2f3e1e791bc7a3d0eeee559e60e9"
 uuid = "a2964d1f-97da-50d4-b82a-358c7fce9d89"
 version = "1.24.0+0"
 
+[[deps.WeakRefStrings]]
+deps = ["DataAPI", "InlineStrings", "Parsers"]
+git-tree-sha1 = "b1be2855ed9ed8eac54e5caff2afcdb442d52c23"
+uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
+version = "1.4.2"
+
 [[deps.WoodburyMatrices]]
 deps = ["LinearAlgebra", "SparseArrays"]
 git-tree-sha1 = "248a7031b3da79a127f14e5dc5f417e26f9f6db7"
 uuid = "efce3f68-66dc-5838-9240-27a6d6f5f9b6"
 version = "1.1.0"
+
+[[deps.WorkerUtilities]]
+git-tree-sha1 = "cd1659ba0d57b71a464a29e64dbc67cfe83d54e7"
+uuid = "76eceee3-57b5-4d4a-8e66-0e911cebbf60"
+version = "1.6.1"
 
 [[deps.XZ_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -4080,6 +4656,12 @@ git-tree-sha1 = "a63799ff68005991f9d9491b6e95bd3478d783cb"
 uuid = "c5fb5394-a638-5e4d-96e5-b29de1b5cf10"
 version = "1.6.0+0"
 
+[[deps.ZipFile]]
+deps = ["Libdl", "Printf", "Zlib_jll"]
+git-tree-sha1 = "f492b7fe1698e623024e873244f10d89c95c340a"
+uuid = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
+version = "0.10.1"
+
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
@@ -4206,60 +4788,71 @@ version = "1.13.0+0"
 # ╔═╡ Cell order:
 # ╠═8f7caf16-306c-41e3-a38a-fc8f681a3626
 # ╠═07559c60-063b-11f0-1a5c-37ed11f4209e
+# ╠═1238b8f3-693c-4801-ba25-5036f070dda4
+# ╠═183e50c8-fc26-4256-b4e6-e5f970339f38
+# ╠═12d4460a-e2fc-453c-85b0-2b3e6fafd223
 # ╠═17a7b231-19fb-455b-a93a-687251df87fb
-# ╠═d6b41872-bd8e-45d1-baa2-fa0cc36b6177
+# ╠═caab7a42-8f3e-4d15-90e6-b4a9d58c16bd
+# ╠═1dea72b9-6ee6-431c-91b1-a43525f19fa8
+# ╟─d6b41872-bd8e-45d1-baa2-fa0cc36b6177
 # ╠═d9ef5002-70d7-40a8-81fa-7a07567eb613
 # ╠═a76599c7-563d-4647-8fda-36869d07ff71
-# ╠═87f54aa2-861a-44f7-b331-1198f522d1e4
+# ╟─87f54aa2-861a-44f7-b331-1198f522d1e4
+# ╠═d30fcc47-3a66-40c9-9aac-280f0dfc2d7b
+# ╠═7c5101d2-29fd-4bcc-85f9-4747819b1bec
 # ╠═c8c3daf0-4e63-49b6-bc07-6ba37f817c5e
-# ╠═678f44cb-e7fa-403d-bb45-7ece4195b88b
+# ╟─678f44cb-e7fa-403d-bb45-7ece4195b88b
 # ╠═6131d42a-38c5-4af5-b065-ba022852146c
-# ╠═618ba8c3-8d46-4ef3-a038-5ecdb21eab03
+# ╟─618ba8c3-8d46-4ef3-a038-5ecdb21eab03
 # ╠═77be2a32-09fb-4f8e-8aca-09bad314e790
-# ╠═38c60ab8-cf05-4051-a5a8-e35ffae7e50c
+# ╠═47aac563-9736-4851-b142-38bd6fc0702a
+# ╠═d5ba1088-8a31-4d68-bfa0-ef67547932ed
+# ╠═95f36a1c-57a7-4bbe-ac75-55a1c152e4af
+# ╟─38c60ab8-cf05-4051-a5a8-e35ffae7e50c
 # ╠═335a090d-a50c-4f9c-a23a-a32b8ff6de34
 # ╠═9d59c6d6-0e2e-40be-aedb-2ea21f6639a8
 # ╠═4b84579b-3a9f-43e8-88bc-879cd950f657
-# ╠═3e31ace1-1073-49b8-936b-1d5da789b895
+# ╟─3e31ace1-1073-49b8-936b-1d5da789b895
 # ╠═5baf5f31-eba8-42eb-9d62-96ce53c7cac8
 # ╠═12d6baf4-c15b-46e8-8be3-0cc52fc9267b
-# ╠═c7d034c8-d72f-461e-93e6-603a9c8f4c62
-# ╠═0d0e82f3-d489-4abc-8887-3e557380d21e
+# ╠═a4ccffb3-f491-439f-ba13-9f17dbdd6c69
+# ╟─c7d034c8-d72f-461e-93e6-603a9c8f4c62
+# ╟─0d0e82f3-d489-4abc-8887-3e557380d21e
 # ╠═fb46cb05-f84c-4554-93cb-5491ebdc9eb0
 # ╠═d90d5231-8680-4d24-ac39-be9e2d532c10
 # ╠═25f56a3b-b8f8-4304-969d-7a4e49c338ea
-# ╠═9be9d09b-a563-49a7-a6c8-72adcbf3a840
+# ╟─9be9d09b-a563-49a7-a6c8-72adcbf3a840
 # ╠═b849f0aa-6391-4945-8ef3-70907a9ff1ec
 # ╠═4b754590-3137-4400-a1a9-bd99135aee4d
 # ╠═ef4431d6-5113-4e77-b549-62b0f6444a39
 # ╠═532e2bf5-2ab9-4efb-84a3-3ab16b6ea81b
 # ╠═2b098bef-934b-40fa-8da5-f08d032aa0e4
-# ╠═7f9790ab-a1af-4de3-8375-44d11d784bf7
-# ╠═04f96ffb-aa30-4bf5-918f-ba1d8528768f
+# ╟─7f9790ab-a1af-4de3-8375-44d11d784bf7
+# ╟─04f96ffb-aa30-4bf5-918f-ba1d8528768f
 # ╠═c559cb5f-a016-43a0-8596-89f006245b4f
-# ╠═8026eb26-010f-487b-bd6d-e82939d09d54
-# ╠═28739577-e9fd-48f2-8f55-a036b560931d
+# ╟─8026eb26-010f-487b-bd6d-e82939d09d54
+# ╟─28739577-e9fd-48f2-8f55-a036b560931d
 # ╠═4d5e821d-ef92-4f84-92c6-27aa12308be9
 # ╠═704943ec-10e2-4c50-994b-4688a99ac6c7
 # ╠═a95b7c43-2db3-45fa-8bcb-9eab971fe0af
 # ╠═9072dc86-1f9f-48c5-8b11-31bf722223f2
-# ╠═04750bc6-5e32-4182-8c58-805d902bc6b4
+# ╟─04750bc6-5e32-4182-8c58-805d902bc6b4
 # ╠═9f330052-b13c-4a11-84e9-95ee1d404e9e
 # ╠═ae2b717e-3102-4954-9f02-763e96794762
 # ╠═25fba8e3-b444-424d-b839-836ab64d76ac
 # ╠═add41f70-5744-494f-8324-726fa5d9bb27
 # ╠═0c13b5ef-8a2e-4cb9-a246-69f66db9b92f
 # ╠═888b4f11-37ba-43df-984b-a887563142ff
-# ╠═1be5a6b2-994a-44b0-8b13-5bbb1fffecd9
+# ╟─1be5a6b2-994a-44b0-8b13-5bbb1fffecd9
 # ╠═69f762a3-9a0c-4480-a300-30c3a3914d36
 # ╠═18a16755-03be-483b-8fb2-51a4fa78bf68
-# ╠═1d16ebec-add7-4d22-854e-cf92d45fc2a3
-# ╠═cd504799-eb4d-4518-9da6-a1ed95c9c9e6
-# ╠═e531ec16-57df-4d07-b913-8bb5569a4bf9
+# ╟─1d16ebec-add7-4d22-854e-cf92d45fc2a3
+# ╟─cd504799-eb4d-4518-9da6-a1ed95c9c9e6
+# ╟─e531ec16-57df-4d07-b913-8bb5569a4bf9
 # ╠═c159f556-4443-4077-acf2-2c11422cf86a
-# ╠═70f129d3-ffa8-4019-bd53-34185ad85356
+# ╟─70f129d3-ffa8-4019-bd53-34185ad85356
 # ╠═a3924235-a17d-463a-b1f4-4bd8f715fe5f
-# ╠═5b12700f-a0ad-4f29-afc7-649ce6c1dfc4
+# ╟─5b12700f-a0ad-4f29-afc7-649ce6c1dfc4
 # ╠═ae708986-6529-4069-904e-60858905f319
 # ╠═0567a709-6420-44f6-908f-28c283bbaecf
 # ╠═9e9f2802-c8ee-4df4-b643-ee3a271e2986
@@ -4270,55 +4863,59 @@ version = "1.13.0+0"
 # ╠═1cb4658c-16ac-412b-8dfb-49778f7fe78a
 # ╠═6468ecea-d228-4789-a8dd-74b053aa0047
 # ╠═816c7fef-e74a-4628-a81a-878b53a1d9ab
-# ╠═5fcf1f4b-ff6a-4458-b253-21c9a2f1f4a4
+# ╟─5fcf1f4b-ff6a-4458-b253-21c9a2f1f4a4
 # ╠═26df6f87-cb16-49c7-b7da-b7d18f793d9d
 # ╠═14daf923-a87c-4e32-853f-51aabff2794b
 # ╠═693c8ac5-8d90-4427-ba1d-a787224245c4
-# ╠═6949b7fb-9e9b-4cf4-a6e9-8e4f4c8a0445
+# ╟─6949b7fb-9e9b-4cf4-a6e9-8e4f4c8a0445
 # ╠═d4213288-b448-4783-a3bc-78c2fb25b4a6
 # ╠═cba370b6-b8c8-44d8-970b-a178602d596f
-# ╠═f87881bb-7eeb-4ded-b9e4-21a72410872e
+# ╟─f87881bb-7eeb-4ded-b9e4-21a72410872e
 # ╠═ff8adfc7-59ea-4f46-b102-ec09a039bd55
-# ╠═cd9bc398-9f62-4a93-90bf-bf9896abbb2e
-# ╠═c4bdfa4e-e4bb-4ba8-9a64-80c867a2ed99
+# ╟─cd9bc398-9f62-4a93-90bf-bf9896abbb2e
+# ╟─c4bdfa4e-e4bb-4ba8-9a64-80c867a2ed99
 # ╠═e0fe156d-7748-4585-bb80-c0c487af76cf
-# ╠═d53fa5b1-eadb-4bc5-a00e-55308f55fac0
+# ╟─d53fa5b1-eadb-4bc5-a00e-55308f55fac0
 # ╠═cc80f43c-b0fb-4f2f-9f8f-7b3fed86405d
-# ╠═aa2e3ac0-fb90-43a0-8177-c6cf1a2019b4
+# ╟─aa2e3ac0-fb90-43a0-8177-c6cf1a2019b4
 # ╠═49dec81f-909e-4a05-b8be-a72231b47a85
 # ╠═a79b738f-90ca-4213-a89f-80e2dfce2fa5
-# ╠═7b1e3dc7-423c-4c4a-9ffd-be54fe991c47
+# ╟─7b1e3dc7-423c-4c4a-9ffd-be54fe991c47
 # ╠═92ab5a18-eeb0-44ff-a20a-b12b3093aa43
 # ╠═23d5c748-d77c-4252-add0-deade4f4a416
 # ╠═0a763717-9f1b-4c6d-98ed-95029d01f509
 # ╠═40e02dbd-fcd4-4297-ab3b-bc5b3d71717a
-# ╠═dff70e54-4ea9-4edf-a3ca-2f7c765b624f
-# ╠═4deac195-47c6-4053-9812-cac86eb34913
+# ╟─dff70e54-4ea9-4edf-a3ca-2f7c765b624f
+# ╟─4deac195-47c6-4053-9812-cac86eb34913
 # ╠═fe494a18-44d3-4342-beea-a6ac891066af
 # ╠═e74c66b7-287d-46ed-9e5b-a241fe06055a
-# ╠═62df7c3a-4667-41a6-98b3-aa330519a41a
+# ╟─62df7c3a-4667-41a6-98b3-aa330519a41a
 # ╠═23db0b3d-f844-4889-8386-79126a19093b
 # ╠═e07d5942-bb5e-41cc-9deb-369c25ef6c2e
-# ╠═0c8b15b1-d848-47f3-ab7d-bd8f254970b0
+# ╟─0c8b15b1-d848-47f3-ab7d-bd8f254970b0
 # ╠═bf08b856-d9d8-4fdc-876e-9950dc549f6e
 # ╠═133329d8-cd89-46ab-8691-81cbfeb72649
-# ╠═f71f0b50-161e-4ca3-bbd7-73a8691ee2b6
+# ╟─f71f0b50-161e-4ca3-bbd7-73a8691ee2b6
 # ╠═7a8932d4-1470-47f1-a598-192ccfa66d94
 # ╠═929142bd-0ab7-4c89-b3f1-e0bc652caa09
 # ╠═dc65ebaa-cd46-4763-bf96-7210f6bc620b
-# ╠═deb15310-a7ef-4291-990e-c4bba8e5c176
-# ╠═bb607eb8-b337-4320-8c4a-629a26796eca
-# ╠═47dd8354-5778-460b-84a5-93fa8ca796a1
+# ╟─deb15310-a7ef-4291-990e-c4bba8e5c176
+# ╟─bb607eb8-b337-4320-8c4a-629a26796eca
+# ╟─47dd8354-5778-460b-84a5-93fa8ca796a1
 # ╠═80c18169-5f8d-4665-9320-270aa20e926a
 # ╠═e9318a7c-125c-4db1-a220-eb0d6de00212
 # ╠═5f7738d8-367c-40fc-87f0-f6732623392d
-# ╠═aa1ac62e-244d-4fc3-8543-0db8104e740a
+# ╟─aa1ac62e-244d-4fc3-8543-0db8104e740a
 # ╠═d3dc7232-ab8b-408d-a8d4-d1cf443afe52
 # ╠═777ee0ce-64fa-4dfe-91f1-ca7d8f61a7a4
 # ╠═41a1dda8-275e-4090-bcd8-5670b4d005a7
-# ╠═8f269b3f-90e8-4cd1-a05a-4fbc63de1cdb
+# ╟─8f269b3f-90e8-4cd1-a05a-4fbc63de1cdb
 # ╠═4e2cf07e-a5c6-464d-ba5e-c3ee0c7098e3
-# ╠═26d51540-49e4-44b3-af4d-62478d6327e2
+# ╠═486085a8-c02d-402d-9627-d78b352662a8
+# ╠═9cab4569-b880-4e48-a6bb-9801aae859ed
+# ╠═21067721-5d44-41f1-afcb-f03d2f7eab85
+# ╠═74268c4b-26cd-4dc8-9f5c-39d504e9bf84
+# ╟─26d51540-49e4-44b3-af4d-62478d6327e2
 # ╠═41028657-878a-4f99-83dc-060a8b95a78a
 # ╠═ca7d7dc1-8ec7-4480-99da-5aa0695c84dd
 # ╠═be3485c9-2aec-41f3-8c05-5d6ceadd787d
@@ -4337,27 +4934,111 @@ version = "1.13.0+0"
 # ╠═68887c8c-9346-4bab-9c76-588adecac9eb
 # ╠═f033373f-1d24-4ddd-9bb8-93c6363bcbaf
 # ╠═87ced096-5bba-4b5d-9ddf-247b43fd97f9
-# ╠═a02429ea-3366-4d06-9c11-4044048569a6
+# ╟─a02429ea-3366-4d06-9c11-4044048569a6
 # ╠═20c9112d-84db-42e1-aa33-5bf9f6ea016b
 # ╠═3d38e9d2-7319-4b4b-ab7c-bcb3d475d17f
-# ╠═65efafc2-3f58-40ac-9ecf-81bf0b133205
+# ╟─65efafc2-3f58-40ac-9ecf-81bf0b133205
 # ╠═4b235b39-43c0-44db-afe0-29306e59e50f
-# ╠═de870ed8-944f-438e-8cf8-d951d96797d9
+# ╟─de870ed8-944f-438e-8cf8-d951d96797d9
 # ╠═e7a0bccb-d292-48b5-bcb7-3a4cb53f065f
-# ╠═7fbb061f-a9ef-47bd-9989-37119e4e6b88
 # ╠═88c47f03-fa83-497a-8738-a4a0f47cf966
 # ╠═26513f85-c5d5-42aa-bdb2-7e8353cada30
 # ╠═532a497e-0faf-450b-89ff-9e0482a94a94
 # ╠═3e947f88-dfe4-4425-a0cf-cb609aa574c0
-# ╠═936bad10-c8ca-4911-af6c-c8cb7926f2cf
-# ╠═a68fe0b6-eb1c-4df6-9c19-e0057dfe2208
+# ╟─936bad10-c8ca-4911-af6c-c8cb7926f2cf
+# ╟─a68fe0b6-eb1c-4df6-9c19-e0057dfe2208
 # ╠═45cd25ad-fa8c-44d3-a3d1-1a9043dbff03
-# ╠═143d4eb1-3e19-4ca8-8bea-e0d35bf69761
-# ╠═17c59c56-d2aa-44d9-8658-bd323b7d50b7
-# ╠═a9cc0876-a907-4b39-bf8b-5c1c8f92258a
+# ╟─143d4eb1-3e19-4ca8-8bea-e0d35bf69761
+# ╟─17c59c56-d2aa-44d9-8658-bd323b7d50b7
+# ╟─a9cc0876-a907-4b39-bf8b-5c1c8f92258a
 # ╠═5e2bfe78-d6ec-4bc1-bd24-460176ea2936
 # ╠═12d48e84-bd6f-4efc-a265-e64234183650
-# ╠═b710c3fa-a48d-4c0a-841e-bc3332cd5bf7
+# ╟─b710c3fa-a48d-4c0a-841e-bc3332cd5bf7
+# ╟─844c5f37-7109-4870-9d36-2ed386157caa
+# ╠═5fa022c8-a0e0-48c1-882c-60c3d93df9a0
+# ╠═5993702f-5727-4adf-8f1a-ad5f35f9f811
+# ╠═d5c4f9f1-6ddc-4b33-bccd-3ec6b4936eef
+# ╠═d49d263a-5d97-4a0e-9667-4c1e03055a0a
+# ╠═85b9976b-2447-4118-9150-439266ec3d8c
+# ╠═00a4994a-9ebb-4623-a4a5-cdce3276d05e
+# ╠═43b66825-3186-470d-baa4-b9e48badc5ac
+# ╟─de203739-c907-40eb-8433-ddccf5599e52
+# ╠═5202c4d8-18ac-4330-a7bf-26e414ce455b
+# ╠═5265cd66-135e-42ce-b26c-bca1c8e11e74
+# ╠═fdf8b7a4-3e9a-461c-bc47-7e6dcb9a150d
+# ╠═7c2c97d2-7dd2-42b9-82da-7522682e03e7
+# ╠═5d9c59a1-4668-448a-bf8e-0e7c266eaad3
+# ╠═fd464321-1c9f-42f9-83a0-22595d774764
+# ╠═45d17bfc-cf83-4c35-a8f6-6e19f744519b
+# ╠═ddcc65cb-fc15-4280-bcf9-211af87a62a0
+# ╠═e745bc71-673c-4176-86d6-ebfd88778651
+# ╠═640bb995-1f20-416d-bca8-e1ce474a8519
+# ╠═a4458c0c-a4d8-4e0c-9a33-9979ba6a35e6
+# ╠═7c96f858-5bb5-4b51-8b3d-bb7002b22423
+# ╠═63356422-f1ab-4433-b812-db0cd9f7658b
+# ╠═a4179e64-4040-4d61-98a8-a83ea314114b
+# ╟─bb2f77d5-f473-422d-8ddf-a0927a9aa4db
+# ╠═eab407c5-7649-45ef-808e-fa0a6819d368
+# ╠═96b75c18-42a9-4458-8ab9-c6ca4c8af645
+# ╠═0a847175-beb1-41da-a1a1-f37aa8229f58
+# ╠═f3e31e7b-3a99-4899-b545-98e9836d1abc
+# ╠═6b877061-a3c5-4cdc-81f8-8a5efc47613f
+# ╠═392c3ba1-2223-42ab-9918-d465222bdfb9
+# ╠═65e695f1-45a5-495c-943b-6127d817fa18
+# ╠═d99270ee-f606-427f-b441-96f713c5e27d
+# ╠═ef03d06e-37ec-438d-b94c-b9a3e0503c92
+# ╠═c2f188e9-4022-4602-bde2-6ce601b79567
+# ╠═0ecf8167-e404-4d88-979a-096df9e4ca76
+# ╠═e950f895-7cc1-4add-a1e1-5f38683c0d35
+# ╠═d7fd837d-0458-4315-832a-043f6a702a5d
+# ╠═83c50700-225d-41d6-820b-3565c5c14ea4
+# ╠═119685b2-ac9f-43fb-8d10-de2803bd2e8b
+# ╠═5a8be3e6-fafc-46d1-8451-998642924f6d
+# ╠═ad5e0856-992c-47c4-82e7-447d0d682456
+# ╠═fd56913d-08be-4418-b52e-c84de5d31862
+# ╠═b3c1849d-b9f7-45c2-a7d7-ec2cd9da07ae
+# ╠═845f8c4e-810c-4346-9cf0-7e3be8fa08ae
+# ╠═9589c025-9b97-4ad2-80cf-79f3248b05a3
+# ╠═53ea45ff-2c92-4a9d-814a-664cedec178d
+# ╠═6801a7fc-bc93-4faf-9f9b-92d32e896d2c
+# ╠═893acab9-a553-4550-9f6b-7df3efd76281
+# ╠═42b19e2a-16c9-4feb-9915-e768314d430b
+# ╠═7e4542b0-e910-4693-a190-cf4cedfac694
+# ╠═5ba6f0fa-0671-4439-bccf-d09092a3344a
+# ╠═c53b31aa-cade-4a34-882a-6dbb24e5594b
+# ╠═4b8e0852-72cc-4aaf-ab65-dfd81d1dd7cb
+# ╠═4364d0c9-35bd-4aff-9243-fe1db3852520
+# ╠═485a94a5-f734-473d-8005-8922c3dc0e27
+# ╠═fc7fc815-9fee-43dd-afd0-76af49ecd92f
+# ╠═1d101652-4ec0-4ca4-bf94-8fbba5145909
+# ╠═df7014c7-d707-4a8c-9f07-e5337b443063
+# ╠═912ca11b-72f9-4888-bbc5-bdcde9c2389b
+# ╠═1be4d7be-e934-45c9-9743-0edbecf0b716
+# ╠═2b0d442d-a482-4599-91c7-4407c75c5de7
+# ╠═4768446a-3797-421e-aadf-c33fd795b6dc
+# ╠═b5586ff2-7ef6-4b2c-ac25-7ae125067167
+# ╠═43c09491-0cd2-41e3-84f6-9df7927edbf8
+# ╠═f654b669-d0d3-4a65-8cb7-df97f982850c
+# ╠═1ec9a50a-9f8f-45ea-bb55-0e2b4b5bccf8
+# ╠═83bb2a87-4d9a-4c9a-a46c-9c2a1af98d1a
+# ╠═8cb530a9-8dc0-48ce-9b09-89278d8b7e66
+# ╠═0425b7cf-4c65-4b7e-89af-07e36f6269e3
+# ╠═e7f04f09-dcfa-4f01-b165-840b30d58826
+# ╠═dc124f12-522a-4d24-ac67-16724feb68ec
+# ╠═a14ffdbc-36ea-4079-86b0-46314688fd1f
+# ╠═105d22aa-c847-46c8-a021-dd43d604cc1d
+# ╠═8a61ffb2-e425-4a35-8270-5d46c13de0ed
+# ╠═5cc95516-f41c-46aa-9daa-eff1f393aa0d
+# ╠═6908caa7-b426-4038-a428-eccadefd2ad5
+# ╟─95f37264-1f87-472a-828f-223c4f566274
+# ╠═5cb412ad-f119-4bca-9514-706a0afdbe70
+# ╠═44f0b92e-4906-4b50-b411-80bf76bcad5b
+# ╠═8f850f3e-799d-435e-b6b8-38212fd40174
+# ╠═26d1ad08-da99-43b2-9f9d-d219291670d0
+# ╠═3dd69b9e-f609-4123-b3c5-cee2797f3ed3
+# ╠═298e8971-03b5-4e9e-94f0-387123ac99f5
+# ╟─12cdf9e7-fbfe-416f-bc94-ffc380ab3138
+# ╠═cf03ab37-1865-404c-82b0-63a6362df604
 # ╠═cbdf5265-1c2b-4bbc-a458-18fba0c9d376
 # ╠═402ead4c-b3e9-4153-baee-1048468e6080
 # ╟─00000000-0000-0000-0000-000000000001

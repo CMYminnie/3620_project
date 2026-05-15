@@ -1,3 +1,0 @@
-Limit,Source,Critical_case,Weight_kg,x_cg_m,CG_percent_MAC,SM_DATCOM_percent,SM_VLM_percent
-Forward CG limit from cases,Boarding potato plot,Forward boundary: front-to-aft - Aisle seats: zone 3,21400.971221999996,15.03658869618709,11.14047130559556,25.70444434438971,24.471664851229892
-Aft CG limit from cases,Boarding potato plot,Aft boundary: aft-to-front - Window seats: zone 4,18160.971221999996,15.992228522025371,38.850694671180996,-2.005779021195731,-3.238558514355549
