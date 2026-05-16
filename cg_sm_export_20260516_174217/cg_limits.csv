@@ -1,0 +1,3 @@
+Limit,Source,Critical_case,Weight_kg,x_cg_m,CG_percent_MAC,SM_DATCOM_percent,SM_VLM_percent
+Forward CG limit from cases,Zone boarding / loading,Front-biased zone boarding - Board zone 3,29406.699999999997,15.498569188800962,12.937689512918414,18.826416010901667,16.690771791030805
+Aft CG limit from cases,Zone boarding / loading,Aft-biased zone boarding - Board zone 4,29406.699999999997,16.329073801695305,37.01942795372068,-5.255322429900593,-7.390966649771452
