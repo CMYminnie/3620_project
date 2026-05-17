@@ -1,0 +1,24 @@
+OEI VERTICAL TAIL / RUDDER AUTHORITY CHECK
+================================================================================
+
+17×3 DataFrame
+ Row │ Quantity                           Value          Unit
+     │ String                             Float64        String
+─────┼──────────────────────────────────────────────────────────
+   1 │ One-engine thrust used              64500.0       N
+   2 │ Engine lateral arm                      4.2       m
+   3 │ Thrust-imbalance OEI yawing mome…  270900.0       N m
+   4 │ Dead-engine drag factor                 0.25      -
+   5 │ Dead-engine drag yawing moment      67725.0       N m
+   6 │ Total OEI yawing moment            338625.0       N m
+   7 │ Full-takeoff CG                        15.8576    m
+   8 │ Vertical tail moment arm from fu…      12.5046    m
+   9 │ Required vertical tail side force   27080.0       N
+  10 │ Assumed stall speed                    62.8       m/s
+  11 │ Assumed Vmc                            75.36      m/s
+  12 │ Dynamic pressure at Vmc              3478.47      Pa
+  13 │ Current vertical tail area             12.0       m^2
+  14 │ Required vertical-tail side-forc…       0.648753  -
+  15 │ Selected rudder chord ratio             0.3       -
+  16 │ Selected rudder span ratio              0.85      -
+  17 │ Estimated rudder area                   3.06      m^2

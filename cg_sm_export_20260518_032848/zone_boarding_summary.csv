@@ -1,0 +1,6 @@
+Zone,Zone_name,Row_range,Passenger_count,Passenger_weight_kg,x_zone_m,x_zone_percent_MAC
+1,Business / First,1–2,6,540.0,5.97,-253.19421310516339
+2,Front economy,3–6,16,1440.0,9.15,-165.0245667400866
+3,Mid-front economy,7–10,16,1440.0,13.389999999999999,-47.465038253317616
+4,Mid-aft economy,11–14,16,1440.0,17.63,70.09449023345142
+5,Aft economy,15–18,16,1440.0,21.87,187.65401872022053

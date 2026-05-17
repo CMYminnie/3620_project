@@ -69,15 +69,16 @@
     # ╔═╡ c8c3daf0-4e63-49b6-bc07-6ba37f817c5e
     wing = Wing(
         foils       = [foil_w_root, foil_w_root, foil_w_tip],              # Airfoils
-        chords 		= [4.787, 3.540, 1.565],  	# Chord lengths 
-        spans       = [4.937, 7.813],
-        dihedrals   = [5.0, 7.0],               # Dihedral angles (deg)
-        sweeps      = [30.0, 30.0],             # Sweep angles (deg )
-        w_sweep     = 0.0,                      # Leading-edge sweep
-        position    = [11.4, 0.0, -1.0],      	 # HOW DO YOU DETERMINE THIS?
+        chords 		= [5.6, 0.6243 * 5.6, 0.2 * 5.6],  	# Chord lengths 
+        spans       = [4.2, 7.75],
+        dihedrals   = [5.0, 5.0],               # Dihedral angles (deg)
+        sweeps      = [25.0, 25.0],             # Sweep angles (deg )
+        w_sweep     = 0.25,                      # Leading-edge sweep
+        position    = [11.77, 0.0, -1.0],      	 # HOW DO YOU DETERMINE THIS?
         symmetry    = true,                      # Symmetry
-        angle       = 5,
-        axis        = [0, 1, 0]
+        angle       = 2,
+        axis        = [0, 1, 0],
+        twists 		= [0, -1.5, -7]
     )
 
     # ╔═╡ 678f44cb-e7fa-403d-bb45-7ece4195b88b
@@ -224,9 +225,9 @@
 
     # ╔═╡ 704943ec-10e2-4c50-994b-4688a99ac6c7
     htail = WingSection(
-            area        = 16.5,  # HOW DO YOU DETERMINE THIS?--> Area~12.5-25% S_wing
-            aspect      = 7.1,  
-            taper       = 0.25,  
+            area        = 18.2,  # HOW DO YOU DETERMINE THIS?--> Area~12.5-25% S_wing
+            aspect      = 5.0,  
+            taper       = 0.4,  
             dihedral    = 0.,   
             sweep       = 30.,  
             w_sweep     = 0.,   # Leading-edge sweep
@@ -237,7 +238,7 @@
             ## Orientation
             angle       = -3,           # Incidence angle (deg), HOW DO YOU DETERMINE THIS?
             axis        = [0., 1., 0.], # Axis of rotation, y-axis
-            position    = [ fuse_end_x - 5.5, 0., 0.], # HOW DO YOU DETERMINE THIS?
+            position    = [ fuse_end_x - 6.5, 0., 0.], # HOW DO YOU DETERMINE THIS?
         );
 
 
@@ -279,8 +280,8 @@
     # ╔═╡ add41f70-5744-494f-8324-726fa5d9bb27
     vtail = WingSection(
             area        = 10, # HOW DO YOU DETERMINE THIS?
-            aspect      = 3.12,
-            taper       = 0.25,
+            aspect      = 1.5,
+            taper       = 0.4,
             sweep       = 30,
             w_sweep     = 0.,   # Leading-edge sweep
             root_foil   = naca4(0,0,1,2),
@@ -314,6 +315,72 @@
 
     # ╔═╡ 18a16755-03be-483b-8fb2-51a4fa78bf68
     V_v = S_v / S_w * l_v / b_w # Vertical tail volume coefficient
+
+    # ============================================================
+# OEI DIRECTIONAL CONTROL CHECK
+# ============================================================
+
+g0 = 9.81
+
+T_engine = 64.5e3      # N, GE CF34-8E approximate max thrust per engine
+eta_oei = 1.0          # conservative, one engine at max thrust
+T_oei = eta_oei * T_engine
+
+# Lateral engine arm from aircraft centerline
+y_engine = abs(eng_L.y)
+
+# OEI yawing moment from failed opposite engine
+N_oei = T_oei * y_engine
+
+# Vertical tail moment arm
+l_v_oei = mac25_v.x - x_cg
+
+# Required vertical tail side force
+Y_v_required = N_oei / l_v_oei
+
+# Dynamic pressure at assumed minimum control speed
+rho_sl = 1.225
+V_mc_assumed = 1.2 * 62.8   # adjust if your stall speed unit is m/s
+q_mc = 0.5 * rho_sl * V_mc_assumed^2
+
+# Required side force coefficient based on current vertical tail area
+CY_v_required = Y_v_required / (q_mc * S_v)
+
+oei_results = DataFrame(
+    Quantity = [
+        "One-engine thrust used",
+        "Engine lateral arm",
+        "OEI yawing moment",
+        "Vertical tail moment arm from full-takeoff CG",
+        "Required vertical tail side force",
+        "Assumed Vmc",
+        "Dynamic pressure at Vmc",
+        "Current vertical tail area",
+        "Required vertical-tail side-force coefficient"
+    ],
+    Value = [
+        T_oei,
+        y_engine,
+        N_oei,
+        l_v_oei,
+        Y_v_required,
+        V_mc_assumed,
+        q_mc,
+        S_v,
+        CY_v_required
+    ],
+    Unit = [
+        "N",
+        "m",
+        "N m",
+        "m",
+        "N",
+        "m/s",
+        "Pa",
+        "m^2",
+        "-"
+    ]
+)
 
     # ╔═╡ 1d16ebec-add7-4d22-854e-cf92d45fc2a3
     md"""### Static Margin Estimation
@@ -1069,7 +1136,7 @@ W_crew_export = n_crew * W_crew_each
 x_crew_export = 0.55 * l_nose
 
 W_baggage_export = n_pax * W_bag_each
-x_baggage_export = l_nose + 0.70 * l_cabin
+x_baggage_export = l_nose + 0.55 * l_cabin
 
 
 
@@ -1540,11 +1607,11 @@ preboarding_trace = DataFrame([
 
 # Front-based case:
 # Business first, then economy from front to rear
-front_biased_order = [1, 2, 3, 4, 5]
+front_biased_order = [1, 2, 4, 3, 5]
 
 # Back-based case:
 # Business first, then economy from rear to front
-aft_biased_order = [1, 5, 4, 3, 2]
+aft_biased_order = [1, 5, 3, 4, 2]
 
 # Recommended case:
 # Business first, then middle economy zones, then front economy,
@@ -1660,13 +1727,13 @@ boarding_cases = DataFrame(
 )
 
 loading_cases = DataFrame(
-    Source = fill("Loading scenarios", nrow(loading_scenarios)),
-    Case = loading_scenarios.Sequence .* " - " .* loading_scenarios.Step,
-    Weight_kg = loading_scenarios.Weight_kg,
-    x_cg_m = loading_scenarios.x_cg_m,
-    CG_percent_MAC = loading_scenarios.CG_percent_MAC,
-    SM_DATCOM_percent = loading_scenarios.SM_DATCOM_percent,
-    SM_VLM_percent = loading_scenarios.SM_VLM_percent
+    Source = fill("Representative loading", nrow(loading_main)),
+    Case = loading_main.Sequence .* " - " .* loading_main.Step,
+    Weight_kg = loading_main.Weight_kg,
+    x_cg_m = loading_main.x_cg_m,
+    CG_percent_MAC = loading_main.CG_percent_MAC,
+    SM_DATCOM_percent = loading_main.SM_DATCOM_percent,
+    SM_VLM_percent = loading_main.SM_VLM_percent
 )
 
 all_cg_cases = vcat(loading_cases, mission_cases, boarding_cases)
@@ -1853,7 +1920,7 @@ plot!(
     potato_envelope.Weight_kg,
     linewidth = 2.5,
     marker = :circle,
-    label = "Front-first zone boarding"
+    label = "Forward-biased zone boarding"
 )
 
 # Potato aft boundary
@@ -1863,7 +1930,7 @@ plot!(
     potato_envelope.Weight_kg,
     linewidth = 2.5,
     marker = :diamond,
-    label = "Rear-first zone boarding"
+    label = "Aft-biased zone boarding"
 )
 
 # Recommended zone boarding path
@@ -2491,6 +2558,15 @@ CSV.write(joinpath(outdir, "zone_boarding_envelope_cases.csv"), boarding_envelop
 CSV.write(joinpath(outdir, "zone_boarding_potato_envelope.csv"), potato_envelope)
 CSV.write(joinpath(outdir, "zone_boarding_group_summary.csv"), boarding_group_summary)
 CSV.write(joinpath(outdir, "aircraft_component_points.csv"), aircraft_component_points)
+CSV.write(joinpath(outdir, "oei_vtail_check.csv"), oei_results)
+
+open(joinpath(outdir, "oei_vtail_check.txt"), "w") do io
+    println(io, "OEI VERTICAL TAIL / RUDDER AUTHORITY CHECK")
+    println(io, repeat("=", 80))
+    println(io)
+    show(io, oei_results; allrows=true, allcols=true)
+    println(io)
+end
 
         open(joinpath(outdir, "aero_derivatives_summary.txt"), "w") do dio
             println(dio, "AERODYNAMIC AND STABILITY DERIVATIVES SUMMARY")
@@ -2601,6 +2677,9 @@ savefig(aircraft_wb_plot, joinpath(outdir, "aircraft_weight_balance_3d.png"))
 
     subsection("Boarding Potato Points Label Table")
     print_table(potato_points_label_table)
+
+    subsection("OEI Vertical Tail / Rudder Authority Check")
+    print_table(oei_results)
 end
 
         zipname = outdir * ".zip"
