@@ -74,7 +74,7 @@
         dihedrals   = [5.0, 5.0],               # Dihedral angles (deg)
         sweeps      = [25.0, 25.0],             # Sweep angles (deg )
         w_sweep     = 0.25,                      # Leading-edge sweep
-        position    = [11.77, 0.0, -1.0],      	 # HOW DO YOU DETERMINE THIS?
+        position    = [11.80, 0.0, -1.0],      	 # HOW DO YOU DETERMINE THIS?
         symmetry    = true,                      # Symmetry
         angle       = 2,
         axis        = [0, 1, 0],
@@ -279,7 +279,7 @@
 
     # ╔═╡ add41f70-5744-494f-8324-726fa5d9bb27
     vtail = WingSection(
-            area        = 10, # HOW DO YOU DETERMINE THIS?
+            area        = 12, # HOW DO YOU DETERMINE THIS?
             aspect      = 1.5,
             taper       = 0.4,
             sweep       = 30,
@@ -316,71 +316,7 @@
     # ╔═╡ 18a16755-03be-483b-8fb2-51a4fa78bf68
     V_v = S_v / S_w * l_v / b_w # Vertical tail volume coefficient
 
-    # ============================================================
-# OEI DIRECTIONAL CONTROL CHECK
-# ============================================================
 
-g0 = 9.81
-
-T_engine = 64.5e3      # N, GE CF34-8E approximate max thrust per engine
-eta_oei = 1.0          # conservative, one engine at max thrust
-T_oei = eta_oei * T_engine
-
-# Lateral engine arm from aircraft centerline
-y_engine = abs(eng_L.y)
-
-# OEI yawing moment from failed opposite engine
-N_oei = T_oei * y_engine
-
-# Vertical tail moment arm
-l_v_oei = mac25_v.x - x_cg
-
-# Required vertical tail side force
-Y_v_required = N_oei / l_v_oei
-
-# Dynamic pressure at assumed minimum control speed
-rho_sl = 1.225
-V_mc_assumed = 1.2 * 62.8   # adjust if your stall speed unit is m/s
-q_mc = 0.5 * rho_sl * V_mc_assumed^2
-
-# Required side force coefficient based on current vertical tail area
-CY_v_required = Y_v_required / (q_mc * S_v)
-
-oei_results = DataFrame(
-    Quantity = [
-        "One-engine thrust used",
-        "Engine lateral arm",
-        "OEI yawing moment",
-        "Vertical tail moment arm from full-takeoff CG",
-        "Required vertical tail side force",
-        "Assumed Vmc",
-        "Dynamic pressure at Vmc",
-        "Current vertical tail area",
-        "Required vertical-tail side-force coefficient"
-    ],
-    Value = [
-        T_oei,
-        y_engine,
-        N_oei,
-        l_v_oei,
-        Y_v_required,
-        V_mc_assumed,
-        q_mc,
-        S_v,
-        CY_v_required
-    ],
-    Unit = [
-        "N",
-        "m",
-        "N m",
-        "m",
-        "N",
-        "m/s",
-        "Pa",
-        "m^2",
-        "-"
-    ]
-)
 
     # ╔═╡ 1d16ebec-add7-4d22-854e-cf92d45fc2a3
     md"""### Static Margin Estimation
@@ -2265,6 +2201,108 @@ full_takeoff_items["fuel"] = (W_fuel_export, x_fuel_export)
 full_takeoff_items["baggage"] = (W_baggage_export, x_baggage_export)
 add_items!(full_takeoff_items, passenger_items_dict())
 full_takeoff_cg = cg_export(full_takeoff_items)
+
+# ============================================================
+# OEI DIRECTIONAL CONTROL CHECK
+# ============================================================
+
+T_engine = 64.5e3      # N, GE CF34-8E approximate takeoff thrust per engine
+eta_oei = 1.0
+T_oei = eta_oei * T_engine
+
+# Lateral engine arm from aircraft centerline
+y_engine = abs(eng_L.y)
+
+# Step 1: thrust-imbalance yawing moment
+N_thrust_oei = T_oei * y_engine
+
+# Step 2: dead-engine drag yawing moment
+# Lecture guideline: high-bypass jet ND = 0.25 * Ntcrit
+dead_engine_drag_factor = 0.25
+N_drag_oei = dead_engine_drag_factor * N_thrust_oei
+
+# Total OEI yawing moment
+N_oei_total = N_thrust_oei + N_drag_oei
+
+# Use full-takeoff CG because OEI/Vmc is a takeoff control case
+l_v_oei = mac25_v.x - full_takeoff_cg.xcg
+
+# Required vertical tail side force
+Y_v_required = N_oei_total / l_v_oei
+
+# Dynamic pressure at assumed minimum control speed
+rho_sl = 1.225
+V_stall = 62.8
+V_mc_assumed = 1.2 * V_stall
+q_mc = 0.5 * rho_sl * V_mc_assumed^2
+
+# Required side force coefficient based on current vertical tail area
+CY_v_required = Y_v_required / (q_mc * S_v)
+
+# Preliminary rudder sizing
+rudder_chord_ratio = 0.30
+rudder_span_ratio = 0.85
+S_rudder = rudder_chord_ratio * rudder_span_ratio * S_v
+
+oei_results = DataFrame(
+    Quantity = [
+        "One-engine thrust used",
+        "Engine lateral arm",
+        "Thrust-imbalance OEI yawing moment",
+        "Dead-engine drag factor",
+        "Dead-engine drag yawing moment",
+        "Total OEI yawing moment",
+        "Full-takeoff CG",
+        "Vertical tail moment arm from full-takeoff CG",
+        "Required vertical tail side force",
+        "Assumed stall speed",
+        "Assumed Vmc",
+        "Dynamic pressure at Vmc",
+        "Current vertical tail area",
+        "Required vertical-tail side-force coefficient",
+        "Selected rudder chord ratio",
+        "Selected rudder span ratio",
+        "Estimated rudder area"
+    ],
+    Value = [
+        T_oei,
+        y_engine,
+        N_thrust_oei,
+        dead_engine_drag_factor,
+        N_drag_oei,
+        N_oei_total,
+        full_takeoff_cg.xcg,
+        l_v_oei,
+        Y_v_required,
+        V_stall,
+        V_mc_assumed,
+        q_mc,
+        S_v,
+        CY_v_required,
+        rudder_chord_ratio,
+        rudder_span_ratio,
+        S_rudder
+    ],
+    Unit = [
+        "N",
+        "m",
+        "N m",
+        "-",
+        "N m",
+        "N m",
+        "m",
+        "m",
+        "N",
+        "m/s",
+        "m/s",
+        "Pa",
+        "m^2",
+        "-",
+        "-",
+        "-",
+        "m^2"
+    ]
+)
 
 # ============================================================
 # 3D AIRCRAFT WEIGHT & BALANCE / STABILITY VISUALIZATION
