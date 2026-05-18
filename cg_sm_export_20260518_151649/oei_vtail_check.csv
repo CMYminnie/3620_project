@@ -1,0 +1,18 @@
+Quantity,Value,Unit
+One-engine thrust used,64500.0,N
+Engine lateral arm,4.2,m
+Thrust-imbalance OEI yawing moment,270900.0,N m
+Dead-engine drag factor,0.25,-
+Dead-engine drag yawing moment,67725.0,N m
+Total OEI yawing moment,338625.0,N m
+Full-takeoff CG,15.858182964779022,m
+Vertical tail moment arm from full-takeoff CG,12.50399738665255,m
+Required vertical tail side force,27081.33963315338,N
+Assumed stall speed,62.8,m/s
+Assumed Vmc,75.36,m/s
+Dynamic pressure at Vmc,3478.4668800000004,Pa
+Current vertical tail area,12.000000000000002,m^2
+Required vertical-tail side-force coefficient,0.6487853357864316,-
+Selected rudder chord ratio,0.3,-
+Selected rudder span ratio,0.85,-
+Estimated rudder area,3.0600000000000005,m^2

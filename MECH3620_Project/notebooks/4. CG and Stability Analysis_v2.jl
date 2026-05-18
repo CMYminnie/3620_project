@@ -420,8 +420,8 @@ end;
         x_other = x_nose + fuse.length / 2
 
         # Final landing gear longitudinal positions from landing gear sizing
-        x_nLG  	= 4.5
-        x_mLG 	= 17.8
+        x_nLG  	= 5.5
+        x_mLG 	= 17.65
     end;
 
     # ╔═╡ 0567a709-6420-44f6-908f-28c283bbaecf
