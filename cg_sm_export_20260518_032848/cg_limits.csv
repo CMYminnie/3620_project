@@ -1,3 +1,0 @@
-Limit,Source,Critical_case,Weight_kg,x_cg_m,CG_percent_MAC,SM_DATCOM_percent,SM_VLM_percent
-Forward CG limit from cases,Zone boarding / loading,Front-biased zone boarding - Board zone 3,30846.699999999997,15.576888762420896,13.169304143666965,15.512453542203767,15.213518212195524
-Aft CG limit from cases,Representative loading,Empty → Crew → Fuel → Payload - Empty weight,14823.96033,16.252660777605332,31.90596439593959,-3.2242067100688603,-3.5231420400771043
